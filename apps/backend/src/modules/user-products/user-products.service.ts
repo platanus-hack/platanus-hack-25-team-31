@@ -11,6 +11,15 @@ interface BuyProductResponse {
   unit: string;
 }
 
+interface AgentAllProductResponse {
+  name: string;
+  category: string;
+  estimatedStock: number;
+  dailyConsumption: number;
+  criticalStock: number;
+  unit: string;
+}
+
 @Injectable()
 export class UserProductsService {
   constructor(
@@ -44,6 +53,26 @@ export class UserProductsService {
         category: userProduct.product.category.name,
         estimatedStock: Number(userProduct.estimatedStock),
         recommendedBuyQuantity: parseFloat(Math.max(0, recommendedBuyQuantity).toFixed(2)),
+        unit: userProduct.product.unit,
+      };
+    });
+  }
+
+  async getAllProductsForAgent(userId: string): Promise<AgentAllProductResponse[]> {
+    // Query all user products with product and category relations
+    const userProducts = await this.userProductRepository.find({
+      where: { userId },
+      relations: ['product', 'product.category'],
+    });
+
+    // Map to response format
+    return userProducts.map((userProduct) => {
+      return {
+        name: userProduct.product.name,
+        category: userProduct.product.category.name,
+        estimatedStock: Number(userProduct.estimatedStock),
+        dailyConsumption: Number(userProduct.dailyConsumption),
+        criticalStock: Number(userProduct.criticalStock),
         unit: userProduct.product.unit,
       };
     });
