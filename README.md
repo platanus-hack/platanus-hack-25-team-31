@@ -19,34 +19,37 @@ despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener
 ### Pasos de Instalación
 
 1. **Clonar el repositorio**
+
    ```bash
    git clone <url-del-repositorio>
    cd platanus-hack-25-team-31
    ```
 
 2. **Instalar dependencias**
+
    ```bash
    pnpm install
    ```
 
 3. **Configurar la base de datos**
-   
+
    Asegúrate de tener PostgreSQL corriendo en tu máquina local. Luego:
-   
+
    ```bash
    # Crear la base de datos
    createdb despens
    ```
 
 4. **Configurar variables de entorno**
-   
+
    Copia el archivo de ejemplo y configura las variables según tu entorno:
-   
+
    ```bash
    cp apps/backend/env.example apps/backend/.env
    ```
-   
+
    Edita `apps/backend/.env` con tus credenciales de PostgreSQL:
+
    ```
    DB_HOST=localhost
    DB_PORT=5432
@@ -56,27 +59,31 @@ despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener
    ```
 
 5. **Ejecutar migraciones de base de datos**
+
    ```bash
    pnpm db:migrate
    ```
 
 6. **Poblar la base de datos con datos de ejemplo (opcional)**
+
    ```bash
    pnpm db:seed
    ```
 
 7. **Iniciar la aplicación**
-   
+
    Para ejecutar tanto el backend como el frontend simultáneamente:
+
    ```bash
    pnpm start
    ```
-   
+
    O ejecutar cada servicio por separado:
+
    ```bash
    # Terminal 1: Backend (puerto 3000)
    pnpm start:backend
-   
+
    # Terminal 2: Frontend (puerto 4200)
    pnpm start:frontend
    ```
