@@ -50,5 +50,6 @@ ENV PORT=3000
 ENV NODE_ENV=production
 
 # Comando de inicio: Ejecutar migraciones y luego iniciar la app
-CMD ["sh", "-c", "pnpm db:migrate && node dist/apps/backend/main.js"]
+# Si es staging, también ejecutar seeds para reemplazar toda la información
+CMD ["sh", "-c", "pnpm db:migrate && ([ \"$RAILWAY_ENVIRONMENT\" = \"staging\" ] && pnpm db:seed || true) && node dist/apps/backend/main.js"]
 

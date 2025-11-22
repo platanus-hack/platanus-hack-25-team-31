@@ -15,4 +15,12 @@ export class UsersService {
     if (!user) throw new NotFoundException(`User with ID ${id} not found`);
     return user;
   }
+
+  async findByPhoneNumber(phoneNumber: string): Promise<User | Record<string, never>> {
+    const user = await this.userRepository.findOne({
+      where: { phoneNumber },
+    });
+
+    return user || {};
+  }
 }
