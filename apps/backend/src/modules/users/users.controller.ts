@@ -7,6 +7,10 @@ import { AgentTokenGuard } from '../auth/guards/agent-token.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get(':id')
+  async findOne(@Param('id') id: string): Promise<User> {
+    return this.usersService.findOne(id);
+  }
   @UseGuards(AgentTokenGuard)
   @Get('phone/:phoneNumber')
   async findByPhoneNumber(@Param('phoneNumber') phoneNumber: string): Promise<User | Record<string, never>> {

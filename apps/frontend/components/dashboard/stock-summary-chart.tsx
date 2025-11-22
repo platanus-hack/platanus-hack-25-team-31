@@ -31,16 +31,23 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
 
   const [weekOffset, setWeekOffset] = useState(0);
 
-  // Assume today is Wednesday (Index 2) for initial render context
-  // In reality we should use new Date().getDay() but for visual consistency requested:
-  const TODAY_INDEX = 2; // Wednesday
+  const TODAY_INDEX = 3; // Thursday (Centered)
 
   // Generate data for the selected week
   const chartData = useMemo(() => {
-    const daysOfWeek = ['L', 'M', 'W', 'J', 'V', 'S', 'D'];
+    const daysOfWeek = ['L', 'M', 'X', 'J', 'V', 'S', 'D']; // Values ignored for display
 
-    return daysOfWeek.map((day, dayIndex) => {
+    return daysOfWeek.map((_, dayIndex) => {
       const daysPassed = weekOffset * 7 + (dayIndex - TODAY_INDEX);
+
+      // Label Logic
+      let displayName = '';
+      if (weekOffset === 0) {
+        if (daysPassed === 0) displayName = 'Hoy';
+        else if (daysPassed === -1) displayName = 'Ayer';
+        else if (daysPassed === 1) displayName = 'Mañana';
+      }
+
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + daysPassed);
       targetDate.setHours(23, 59, 59, 999); // End of day
@@ -54,8 +61,7 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
         let stockAtDate = 0;
 
         if (daysPassed <= 0) {
-          // PAST: Use History from movements
-          // Find last movement for this product before or on targetDate
+          // PAST/PRESENT: Use History
           const productMovements = movements
             .filter(
               (m) => m.userProductId === userProduct.id && new Date(m.createdAt).getTime() <= targetDate.getTime(),
@@ -65,16 +71,10 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
           if (productMovements.length > 0) {
             stockAtDate = Number(productMovements[0].stockAfter);
           } else {
-            // If no movements found in history, assume 0 or maybe initial seed?
-            // For now 0 is safer, or maybe try to find if there are FUTURE movements (meaning we are before creation)
             stockAtDate = 0;
           }
         } else {
-          // FUTURE: Use Projection from Current Stock
-          // daysPassed is positive.
-          // Logic: Current Stock - (Consumption * daysPassed)
-          // But wait, daysPassed is relative to TODAY.
-          // So we project from TODAY's stock.
+          // FUTURE: Use Projection
           const currentStock = Number(userProduct.estimatedStock);
           const projectedStock = currentStock - dailyConsumption * daysPassed;
           stockAtDate = Math.max(0, projectedStock);
@@ -87,7 +87,7 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
       const average = totalPercentage / count;
 
       return {
-        name: day,
+        name: displayName,
         average: Number(average.toFixed(1)),
         isPast: weekOffset === 0 && dayIndex < TODAY_INDEX,
         isFuture: weekOffset > 0 || (weekOffset === 0 && dayIndex > TODAY_INDEX),
@@ -96,18 +96,25 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
     });
   }, [products, movements, weekOffset, optimalDays]);
 
-  const processedData = chartData.map((d, i) => {
+  const processedData = chartData.map((d) => {
     let solidVal = null;
     let dashedVal = null;
 
     if (weekOffset < 0) {
+      // Past weeks: All solid (History)
       solidVal = d.average;
     } else if (weekOffset > 0) {
+      // Future weeks: All dashed (Projection)
       dashedVal = d.average;
     } else {
       // Current week
-      if (i <= TODAY_INDEX) solidVal = d.average; // Past/Today
-      if (i >= TODAY_INDEX) dashedVal = d.average; // Future
+      if (d.isPast || d.isToday) {
+        solidVal = d.average;
+      }
+      if (d.isFuture || d.isToday) {
+        // Start dashed from Today to connect lines
+        dashedVal = d.average;
+      }
     }
 
     return { ...d, solidVal, dashedVal };
@@ -140,7 +147,7 @@ export default function StockSummaryChart({ products, movements = [] }: StockSum
       <CardContent className="flex-1 min-h-0">
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={processedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={processedData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} stroke="#e5e7eb" opacity={0.9} />
               <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} interval={0} />
               <YAxis

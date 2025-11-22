@@ -11,7 +11,7 @@ import { InventoryMovementsModule } from './modules/inventory-movements/inventor
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { UserProductsModule } from './modules/user-products/user-products.module';
-
+import { AdminModule } from './modules/admin/admin.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -34,6 +34,7 @@ import { UserProductsModule } from './modules/user-products/user-products.module
     InventoryMovementsModule,
     AuthModule,
     UserProductsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [],
