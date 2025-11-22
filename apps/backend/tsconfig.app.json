@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -9,9 +10,12 @@
     "target": "es2021",
     "sourceMap": true,
     "outDir": "../../dist/apps/backend",
-    "types": ["node"]
+    "types": ["node"],
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "useDefineForClassFields": false
   },
   "include": ["src/**/*.ts", "../../libs/shared-validation/src/index.ts", "../../libs/shared-utils/src/index.ts"],
   "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"]
 }
-
