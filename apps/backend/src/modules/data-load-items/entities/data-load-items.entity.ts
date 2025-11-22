@@ -1,15 +1,15 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/base.entity';
 import { DataLoad } from '../../data-loads/entities/data-load.entity';
-import { Product } from '../../products/entities/product.entity';
+import { UserProduct } from '../../user-products/entities/user-product.entity';
 
 @Entity('data_load_items')
 export class DataLoadItems extends BaseEntity {
   @Column({ name: 'data_load_id' })
   dataLoadId: string;
 
-  @Column({ name: 'product_id' })
-  productId: string;
+  @Column({ name: 'user_product_id' })
+  userProductId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   quantity: number;
@@ -19,8 +19,7 @@ export class DataLoadItems extends BaseEntity {
   @JoinColumn({ name: 'data_load_id' })
   dataLoad?: DataLoad;
 
-  @ManyToOne(() => Product, (product) => product.dataLoadItems)
-  @JoinColumn({ name: 'product_id' })
-  product?: Product;
+  @ManyToOne(() => UserProduct, (userProduct) => userProduct.dataLoadItems)
+  @JoinColumn({ name: 'user_product_id' })
+  userProduct?: UserProduct;
 }
-
