@@ -7,14 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Category, CategoryEmojis } from '@/constants/category';
 // eslint-disable-next-line @nx/enforce-module-boundaries
-import type { Product } from '@backend/src/modules/products/entities/product.entity';
+import type { UserProduct } from '@backend/src/modules/user-products/entities/user-product.entity';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { MeasurementUnit } from '@backend/src/modules/products/entities/measurement-unit.enum';
 
 interface ProductsTableProps {
-  products: Product[];
+  products: UserProduct[];
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -35,10 +34,13 @@ const WARNING_THRESHOLD = Number(process.env.NEXT_PUBLIC_WARNING_STOCK_THRESHOLD
 const OPTIMAL_STOCK_DAYS = Number(process.env.NEXT_PUBLIC_OPTIMAL_STOCK_DAYS || 10);
 
 // Helper to calculate stock health percentage
-function calculateStockHealth(product: Product): number {
-  const optimalStock = Number(product.dailyConsumption) * OPTIMAL_STOCK_DAYS;
+function calculateStockHealth(userProduct: UserProduct): number {
+  const dailyConsumption = Number(userProduct.dailyConsumption);
+  const estimatedStock = Number(userProduct.estimatedStock);
+  const optimalStock = dailyConsumption * OPTIMAL_STOCK_DAYS;
+
   if (optimalStock === 0) return 100; // Edge case
-  return (Number(product.estimatedStock) / optimalStock) * 100;
+  return (estimatedStock / optimalStock) * 100;
 }
 
 export default function ProductsTable({ products }: ProductsTableProps) {
@@ -47,15 +49,28 @@ export default function ProductsTable({ products }: ProductsTableProps) {
   const [onlyCritical, setOnlyCritical] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Extract unique categories from products for the filter
+  const uniqueCategories = useMemo(() => {
+    const categories = new Map<string, string>(); // Name -> Emoji
+    products.forEach((p) => {
+      if (p.product?.category) {
+        categories.set(p.product.category.name, p.product.category.emoji);
+      }
+    });
+    return Array.from(categories.entries()).map(([name, emoji]) => ({ name, emoji }));
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    return products.filter((userProduct) => {
+      const product = userProduct.product;
+      if (!product) return false;
+
       const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = categoryFilter === 'ALL' || product.category === categoryFilter;
+      const matchesCategory = categoryFilter === 'ALL' || product.category?.name === categoryFilter;
 
       // Backend criticalStock is a number (threshold).
       // Frontend logic: isCritical if estimatedStock <= criticalStock
-      // Ensure we parse numbers just in case they come as strings from JSON
-      const isCritical = Number(product.estimatedStock) <= Number(product.criticalStock);
+      const isCritical = Number(userProduct.estimatedStock) <= Number(userProduct.criticalStock);
       const matchesCritical = !onlyCritical || isCritical;
 
       return matchesSearch && matchesCategory && matchesCritical;
@@ -106,7 +121,10 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                       Todos
                     </span>
                   ) : (
-                    <span className="md:hidden">{CategoryEmojis[categoryFilter as Category] || categoryFilter}</span>
+                    // Show Emoji on mobile if selected
+                    <span className="md:hidden">
+                      {uniqueCategories.find((c) => c.name === categoryFilter)?.emoji || categoryFilter}
+                    </span>
                   )}
                   <span className="hidden md:inline">{categoryFilter === 'ALL' ? 'Todas' : categoryFilter}</span>
                 </SelectValue>
@@ -116,12 +134,12 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                   <span className="sm:hidden text-sm">Todos</span>
                   <span className="hidden sm:inline">Todos</span>
                 </SelectItem>
-                {Object.values(Category).map((cat) => (
-                  <SelectItem key={cat} value={cat}>
+                {uniqueCategories.map((cat) => (
+                  <SelectItem key={cat.name} value={cat.name}>
                     <div className="flex items-center gap-2">
-                      <span>{CategoryEmojis[cat]}</span>
-                      <span className="hidden sm:inline">{cat}</span>
-                      <span className="sm:hidden text-xs">{cat.substring(0, 3)}..</span>
+                      <span>{cat.emoji}</span>
+                      <span className="hidden sm:inline">{cat.name}</span>
+                      <span className="sm:hidden text-xs">{cat.name.substring(0, 3)}..</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -142,12 +160,13 @@ export default function ProductsTable({ products }: ProductsTableProps) {
           </TableHeader>
           <TableBody>
             {paginatedProducts.length > 0 ? (
-              paginatedProducts.map((product) => {
-                const health = calculateStockHealth(product);
+              paginatedProducts.map((userProduct) => {
+                const product = userProduct.product;
+                const health = calculateStockHealth(userProduct);
                 let rowClass = 'bg-green-50 hover:bg-green-100'; // Default Green
 
                 // Backend critical logic
-                const isCritical = Number(product.estimatedStock) <= Number(product.criticalStock);
+                const isCritical = Number(userProduct.estimatedStock) <= Number(userProduct.criticalStock);
 
                 // Color logic using env thresholds AND critical flag from backend
                 if (isCritical || health < CRITICAL_THRESHOLD) {
@@ -157,15 +176,15 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                 }
 
                 return (
-                  <TableRow key={product.id} className={rowClass}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableRow key={userProduct.id} className={rowClass}>
+                    <TableCell className="font-medium">{product?.name}</TableCell>
                     <TableCell>
-                      {Number(product.estimatedStock)} {UNIT_ABBREVIATIONS[product.measurementUnit]}
+                      {Number(userProduct.estimatedStock)} {product?.unit ? UNIT_ABBREVIATIONS[product.unit] : ''}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span>{CategoryEmojis[product.category as Category] || '📦'}</span>
-                        <span className="text-xs text-muted-foreground md:text-sm">{product.category}</span>
+                        <span>{product?.category?.emoji || '📦'}</span>
+                        <span className="text-xs text-muted-foreground md:text-sm">{product?.category?.name}</span>
                       </div>
                     </TableCell>
                   </TableRow>

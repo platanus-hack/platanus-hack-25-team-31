@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { validationPlaceholder } from '@shared-validation';
-import { utilsPlaceholder } from '@shared-utils';
 import { AppController } from './app.controller';
 import { UsersModule } from './modules/users/users.module';
 import { HomesModule } from './modules/homes/homes.module';
@@ -10,9 +8,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { DataLoadsModule } from './modules/data-loads/data-loads.module';
 import { DataLoadItemsModule } from './modules/data-load-items/data-load-items.module';
 import { InventoryMovementsModule } from './modules/inventory-movements/inventory-movements.module';
-
-console.log(validationPlaceholder());
-console.log(utilsPlaceholder());
+import { AuthModule } from './modules/auth/auth.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 @Module({
   imports: [
@@ -30,9 +27,11 @@ console.log(utilsPlaceholder());
     HomesModule,
     PeopleModule,
     ProductsModule,
+    CategoriesModule,
     DataLoadsModule,
     DataLoadItemsModule,
     InventoryMovementsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [],

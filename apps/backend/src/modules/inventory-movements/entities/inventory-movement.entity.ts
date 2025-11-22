@@ -1,7 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/base.entity';
-import { User } from '../../users/entities/user.entity';
-import { Product } from '../../products/entities/product.entity';
+import { UserProduct } from '../../user-products/entities/user-product.entity';
 import { DataLoad } from '../../data-loads/entities/data-load.entity';
 
 export enum MovementType {
@@ -12,11 +11,8 @@ export enum MovementType {
 
 @Entity('inventory_movements')
 export class InventoryMovement extends BaseEntity {
-  @Column({ name: 'user_id' })
-  userId: string;
-
-  @Column({ name: 'product_id' })
-  productId: string;
+  @Column({ name: 'user_product_id' })
+  userProductId: string;
 
   @Column({
     name: 'movement_type',
@@ -28,17 +24,16 @@ export class InventoryMovement extends BaseEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   quantity: number;
 
+  @Column({ name: 'stock_after', type: 'decimal', precision: 10, scale: 2 })
+  stockAfter: number;
+
   @Column({ name: 'source_load_id', nullable: true })
   sourceLoadId: string | null;
 
   // Relations
-  @ManyToOne(() => User, (user) => user.inventoryMovements)
-  @JoinColumn({ name: 'user_id' })
-  user?: User;
-
-  @ManyToOne(() => Product, (product) => product.inventoryMovements)
-  @JoinColumn({ name: 'product_id' })
-  product?: Product;
+  @ManyToOne(() => UserProduct, (userProduct) => userProduct.inventoryMovements)
+  @JoinColumn({ name: 'user_product_id' })
+  userProduct?: UserProduct;
 
   @ManyToOne(() => DataLoad, (dataLoad) => dataLoad.inventoryMovements, {
     nullable: true,
