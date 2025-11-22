@@ -15,13 +15,16 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 // eslint-disable-next-line @nx/enforce-module-boundaries
-import type { Product } from '@backend/src/modules/products/entities/product.entity';
+import type { UserProduct } from '@backend/src/modules/user-products/entities/user-product.entity';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { InventoryMovement } from '@backend/src/modules/inventory-movements/entities/inventory-movement.entity';
 
 interface StockSummaryChartProps {
-  products: Product[];
+  products: UserProduct[];
+  movements?: InventoryMovement[];
 }
 
-export default function StockSummaryChart({ products }: StockSummaryChartProps) {
+export default function StockSummaryChart({ products, movements = [] }: StockSummaryChartProps) {
   const optimalDays = Number(process.env.NEXT_PUBLIC_OPTIMAL_STOCK_DAYS || 10);
   const criticalThreshold = Number(process.env.NEXT_PUBLIC_CRITICAL_STOCK_THRESHOLD || 20);
   const warningThreshold = Number(process.env.NEXT_PUBLIC_WARNING_STOCK_THRESHOLD || 40);
@@ -29,23 +32,55 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Assume today is Wednesday (Index 2) for initial render context
+  // In reality we should use new Date().getDay() but for visual consistency requested:
   const TODAY_INDEX = 2; // Wednesday
 
   // Generate data for the selected week
   const chartData = useMemo(() => {
     const daysOfWeek = ['L', 'M', 'W', 'J', 'V', 'S', 'D'];
+
     return daysOfWeek.map((day, dayIndex) => {
       const daysPassed = weekOffset * 7 + (dayIndex - TODAY_INDEX);
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysPassed);
+      targetDate.setHours(23, 59, 59, 999); // End of day
 
       let totalPercentage = 0;
       const count = products.length || 1;
 
-      products.forEach((product) => {
-        const optimalStock = Number(product.dailyConsumption) * optimalDays;
-        const projectedStock = Number(product.estimatedStock) - Number(product.dailyConsumption) * daysPassed;
+      products.forEach((userProduct) => {
+        const dailyConsumption = Number(userProduct.dailyConsumption);
+        const optimalStock = dailyConsumption * optimalDays;
+        let stockAtDate = 0;
 
-        const finalStock = Math.max(0, projectedStock);
-        const percentage = optimalStock > 0 ? (finalStock / optimalStock) * 100 : 0;
+        if (daysPassed <= 0) {
+          // PAST: Use History from movements
+          // Find last movement for this product before or on targetDate
+          const productMovements = movements
+            .filter(
+              (m) => m.userProductId === userProduct.id && new Date(m.createdAt).getTime() <= targetDate.getTime(),
+            )
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          if (productMovements.length > 0) {
+            stockAtDate = Number(productMovements[0].stockAfter);
+          } else {
+            // If no movements found in history, assume 0 or maybe initial seed?
+            // For now 0 is safer, or maybe try to find if there are FUTURE movements (meaning we are before creation)
+            stockAtDate = 0;
+          }
+        } else {
+          // FUTURE: Use Projection from Current Stock
+          // daysPassed is positive.
+          // Logic: Current Stock - (Consumption * daysPassed)
+          // But wait, daysPassed is relative to TODAY.
+          // So we project from TODAY's stock.
+          const currentStock = Number(userProduct.estimatedStock);
+          const projectedStock = currentStock - dailyConsumption * daysPassed;
+          stockAtDate = Math.max(0, projectedStock);
+        }
+
+        const percentage = optimalStock > 0 ? (stockAtDate / optimalStock) * 100 : 0;
         totalPercentage += percentage;
       });
 
@@ -59,7 +94,7 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
         isToday: weekOffset === 0 && dayIndex === TODAY_INDEX,
       };
     });
-  }, [products, weekOffset, optimalDays]);
+  }, [products, movements, weekOffset, optimalDays]);
 
   const processedData = chartData.map((d, i) => {
     let solidVal = null;
@@ -71,8 +106,8 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
       dashedVal = d.average;
     } else {
       // Current week
-      if (i <= TODAY_INDEX) solidVal = d.average;
-      if (i >= TODAY_INDEX) dashedVal = d.average;
+      if (i <= TODAY_INDEX) solidVal = d.average; // Past/Today
+      if (i >= TODAY_INDEX) dashedVal = d.average; // Future
     }
 
     return { ...d, solidVal, dashedVal };
@@ -136,7 +171,7 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
                 label={{ position: 'insideRight', fill: 'orange', fontSize: 10 }}
               />
 
-              {/* Solid Line (Past/Present) */}
+              {/* Solid Line (Past/Present - Real Data) */}
               <Line
                 type="monotone"
                 dataKey="solidVal"
@@ -149,7 +184,7 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
                 animationDuration={200}
               />
 
-              {/* Dashed Line (Future) */}
+              {/* Dashed Line (Future - Projected) */}
               <Line
                 type="monotone"
                 dataKey="dashedVal"
