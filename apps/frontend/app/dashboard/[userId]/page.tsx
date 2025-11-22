@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ const TOKEN_DURATION_MS = process.env.NEXT_PUBLIC_TOKEN_DURATION_MS || 30 * 60 *
 
 export default function DashboardPage() {
   const params = useParams();
-  // const router = useRouter();
+  const router = useRouter();
   const userId = params.userId as string;
   const [isVerified, setIsVerified] = useState(false);
   const [otp, setOtp] = useState('');
@@ -50,35 +50,72 @@ export default function DashboardPage() {
     checkToken();
   }, [userId]);
 
+  // Admin Check Effect
+  useEffect(() => {
+    if (isVerified) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      // Check Admin Status
+      fetch(`${apiUrl}/users/${userId}`)
+        .then((res) => res.json())
+        .then((user) => {
+          if (user.phoneNumber === '+56900000001') {
+            router.push('/platanus-hack-admin');
+          }
+        })
+        .catch((err) => console.error('Error fetching user', err));
+    }
+  }, [isVerified, userId, router]);
+
+  // Data Fetching Effect (Polling)
   useEffect(() => {
     if (isVerified) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-      // Fetch Products
-      fetch(`${apiUrl}/products/user/${userId}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Error fetching products');
-          return res.json();
-        })
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setProducts(data);
-          }
-        })
-        .catch(() => toast.error('Error al cargar productos'));
+      const fetchData = () => {
+        // Fetch Products
+        fetch(`${apiUrl}/products/user/${userId}`)
+          .then((res) => {
+            if (!res.ok) throw new Error('Error fetching products');
+            return res.json();
+          })
+          .then((data) => {
+            if (Array.isArray(data)) {
+              setProducts((prev) => {
+                if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+                return data;
+              });
+            }
+          })
+          .catch(() => {
+            // Silent failure for polling to avoid toast spam
+          });
 
-      // Fetch Movements
-      fetch(`${apiUrl}/inventory-movements/user/${userId}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Error fetching movements');
-          return res.json();
-        })
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setMovements(data);
-          }
-        })
-        .catch(() => console.error('Error loading movements'));
+        // Fetch Movements
+        fetch(`${apiUrl}/inventory-movements/user/${userId}`)
+          .then((res) => {
+            if (!res.ok) throw new Error('Error fetching movements');
+            return res.json();
+          })
+          .then((data) => {
+            if (Array.isArray(data)) {
+              setMovements((prev) => {
+                if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+                return data;
+              });
+            }
+          })
+          .catch(() => {
+            // Silent failure for polling
+          });
+      };
+
+      // Initial fetch
+      fetchData();
+
+      // Poll every 0.9 seconds
+      const interval = setInterval(fetchData, 900);
+
+      return () => clearInterval(interval);
     }
   }, [isVerified, userId]);
 

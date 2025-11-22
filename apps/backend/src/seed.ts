@@ -219,6 +219,15 @@ async function seed() {
   });
   await userRepository.save(user2);
 
+  // ADMIN USER
+  const adminUser = userRepository.create({
+    phoneNumber: '+56900000001',
+    name: 'Admin Platanus',
+    otpCode: '9999',
+    otpExpiresAt: nextYear,
+  });
+  await userRepository.save(adminUser);
+
   // User 2 Products
   const user2ProductsData = [
     { name: 'Avena', estimatedStock: 1.5, dailyConsumption: 0.2, criticalStock: 0.4 },
