@@ -54,10 +54,33 @@ Este proyecto está configurado como un monorepo Nx y utiliza Docker para el des
     - Si tu frontend necesita comunicarse con el backend, agrega la URL del backend:
         - `NEXT_PUBLIC_API_URL`: `https://<url-de-tu-backend>.up.railway.app` (Obtén esta URL del servicio de Backend en Networking).
 
+## Paso 5: Configurar el Agente de Despensa (Flask)
+
+1. En el Canvas, haz clic en **"New"** -> **"GitHub Repo"**.
+2. Selecciona **el mismo repositorio** nuevamente. Esto creará un tercer servicio.
+3. Haz clic en el nuevo servicio (puedes renombrarlo a "Despense Agent" en Settings).
+4. Ve a **Settings** -> **Build**.
+    - **Builder**: Select `Dockerfile`.
+    - **Dockerfile Path**: Ingresa `apps/despense-agent/Dockerfile`.
+    - **Watch Paths** (Opcional): `apps/despense-agent/**`.
+    - **Root Directory**: `/apps/despense-agent` (Importante: establece el contexto en el subdirectorio de la app).
+5. Ve a la pestaña **Variables**.
+    - Agrega las variables de entorno necesarias para el agente:
+        - `OPENAI_API_KEY`: Tu API key de OpenAI.
+        - `WHATSAPP_TOKEN`: Token de acceso de Meta WhatsApp Cloud API.
+        - `WHATSAPP_PHONE_NUMBER_ID`: ID del número de teléfono de WhatsApp.
+        - `WHATSAPP_VERIFY_TOKEN`: Token de verificación para el webhook (definido por ti).
+    - Opcionales:
+        - `FLASK_DEBUG`: `false` (recomendado para producción).
+        - `OPENAI_MODEL`: Modelo a usar (ej: `gpt-4o-mini`).
+6. Ve a la pestaña **Networking**.
+    - Haz clic en **"Generate Domain"** para obtener una URL pública (ej. `despense-agent-production.up.railway.app`).
+    - Esta URL pública debe configurarse en el **App Dashboard de Meta** como la URL del Webhook (agregando `/webhook` al final).
+
 ## Notas Importantes
 
 - **Migraciones**: El Dockerfile del backend está configurado para ejecutar `pnpm db:migrate` automáticamente al iniciar el contenedor. Esto asegura que la base de datos esté siempre actualizada.
 - **Puertos**:
     - Backend escucha en el puerto que Railway le asigne (variable `PORT`).
     - Frontend escucha en el puerto 3000 internamente, pero Railway mapea el tráfico HTTP automáticamente.
-
+    - Despense Agent escucha en el puerto que Railway le asigne (variable `PORT`), internamente mapeado en el código.
