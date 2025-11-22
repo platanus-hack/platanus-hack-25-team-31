@@ -3,16 +3,9 @@ import { BaseEntity } from '../../common/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { DataLoadItems } from '../../data-load-items/entities/data-load-items.entity';
 import { InventoryMovement } from '../../inventory-movements/entities/inventory-movement.entity';
+import { MeasurementUnit } from './measurement-unit.enum';
 
-export enum MeasurementUnit {
-  GRAM = 'gram',
-  KILOGRAM = 'kilogram',
-  LITER = 'liter',
-  MILLILITER = 'milliliter',
-  UNIT = 'unit',
-  PACK = 'pack',
-  OTHER = 'other',
-}
+export { MeasurementUnit };
 
 @Entity('products')
 export class Product extends BaseEntity {

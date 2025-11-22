@@ -1,0 +1,33 @@
+export enum Category {
+  GRANOS = 'Granos',
+  PASTA = 'Pasta',
+  ACEITES = 'Aceites',
+  LACTEOS = 'Lácteos',
+  ENDULZANTES = 'Endulzantes',
+  CONDIMENTOS = 'Condimentos',
+  HARINAS = 'Harinas',
+  CONSERVAS = 'Conservas',
+  CEREALES = 'Cereales',
+  PROTEINAS = 'Proteínas',
+  CARNES = 'Carnes',
+  LEGUMBRES = 'Legumbres',
+  PROTEINAS_VEGETALES = 'Proteínas Vegetales',
+  BEBIDAS_VEGETALES = 'Bebidas Vegetales',
+}
+
+export const CategoryEmojis: Record<Category | string, string> = {
+  [Category.GRANOS]: '🌾',
+  [Category.PASTA]: '🍝',
+  [Category.ACEITES]: '🫒',
+  [Category.LACTEOS]: '🥛',
+  [Category.ENDULZANTES]: '🍯',
+  [Category.CONDIMENTOS]: '🧂',
+  [Category.HARINAS]: '🥡',
+  [Category.CONSERVAS]: '🥫',
+  [Category.CEREALES]: '🥣',
+  [Category.PROTEINAS]: '🍗',
+  [Category.CARNES]: '🥩',
+  [Category.LEGUMBRES]: '🫘',
+  [Category.PROTEINAS_VEGETALES]: '🥬',
+  [Category.BEBIDAS_VEGETALES]: '🥥',
+};
