@@ -10,6 +10,7 @@ import { DataLoadItemsModule } from './modules/data-load-items/data-load-items.m
 import { InventoryMovementsModule } from './modules/inventory-movements/inventory-movements.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { UserProductsModule } from './modules/user-products/user-products.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
     DataLoadItemsModule,
     InventoryMovementsModule,
     AuthModule,
+    UserProductsModule,
   ],
   controllers: [AppController],
   providers: [],
