@@ -31,6 +31,17 @@ COPY --from=base /app/package.json ./package.json
 COPY --from=base /app/dist/apps/backend ./dist/apps/backend
 COPY --from=base /app/apps/backend/env.example ./apps/backend/env.example
 
+# Copiar archivos de configuración de Nx necesarios para ejecutar comandos
+COPY --from=base /app/nx.json ./nx.json
+COPY --from=base /app/tsconfig.base.json ./tsconfig.base.json
+
+# Copiar código fuente del backend necesario para migraciones (TypeORM usa ts-node)
+COPY --from=base /app/apps/backend/src ./apps/backend/src
+COPY --from=base /app/apps/backend/project.json ./apps/backend/project.json
+COPY --from=base /app/apps/backend/tsconfig.app.json ./apps/backend/tsconfig.app.json
+COPY --from=base /app/apps/backend/tsconfig.json ./apps/backend/tsconfig.json
+COPY --from=base /app/apps/backend/webpack.config.js ./apps/backend/webpack.config.js
+
 # Exponer puerto
 EXPOSE 3000
 
