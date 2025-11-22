@@ -6,7 +6,7 @@
 
 ## Descripción del Proyecto
 
-despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener un control completo del inventario de sus despensas domésticas. Utilizando modelos de lenguaje (LLMs), inteligencia artificial y técnicas de predicción, el sistema genera estimaciones precisas del stock de cada producto. Los usuarios interactúan con Despensin, un gestor de despensas amigable y motivado cuyo propósito principal es conocer el estado de cada producto y asegurarse de que nunca más se olvide comprar algo en el supermercado.
+despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener un control completo del inventario de sus despensas domésticas. Utilizando modelos de lenguaje (LLMs), inteligencia artificial y técnicas de predicción, el sistema genera estimaciones precisas del stock de cada producto. Los usuarios interactúan con Despensin, un gestor de despensas amigable y motivado cuyo propósito principal es conocer el estado de cada producto y asegurarse de que nunca más se olvide comprar algo en el supermercado
 
 ## Arquitectura del Sistema
 
