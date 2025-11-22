@@ -6,20 +6,22 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DUMMY_PRODUCTS } from '@/dummy-data/products';
 import StockSummaryChart from '@/components/dashboard/stock-summary-chart';
 import ProductsTable from '@/components/dashboard/products-table';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { Product } from '@backend/src/modules/products/entities/product.entity';
 
 const OTP_CODE = '0000';
 const TOKEN_DURATION_MS = process.env.TOKEN_DURATION_MS || 30 * 60 * 1000;
 
 export default function DashboardPage() {
   const params = useParams();
-  //const router = useRouter();
+  // const router = useRouter();
   const userId = params.userId as string;
   const [isVerified, setIsVerified] = useState(false);
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     // Visual-only URL update to mask user ID
@@ -44,26 +46,24 @@ export default function DashboardPage() {
     };
 
     checkToken();
-
-    // TODO: Implement interval to check expiration periodically after 1 minute
   }, [userId]);
 
-  // Refresh logic: If user is on /dashboard manually (e.g. after refresh), they might be lost
-  // because the dynamic route is /dashboard/[userId].
-  // However, `window.history.replaceState` only changes the visual URL.
-  // A real refresh would try to load `/dashboard` which might 404 if Next.js doesn't have a page there.
-  // If we want to support refresh, we need a real /dashboard page that redirects based on token,
-  // OR we remove the visual masking if it breaks UX.
-  // The prompt says "si hacemos un refresh se tiene que hacer a dashbord/userid y no a dashbord".
-  // Since we are in a dynamic route component, we can't easily force the browser to "remember" the real URL
-  // for a refresh if we masked it, UNLESS we don't mask it, or use query params.
-  // But the user wants the visual mask AND the refresh capability.
-  // The only way to "refresh to dashboard/userid" while visually showing "dashboard" is if the browser
-  // natively knew the underlying resource, which replaceState hides.
-  // If the user refreshes, the browser requests the CURRENT URL bar content.
-  // So if URL is `/dashboard`, browser requests `/dashboard`.
-  // If we don't have a `app/dashboard/page.tsx`, it 404s.
-  // I should probably create `app/dashboard/page.tsx` that handles this redirection logic.
+  useEffect(() => {
+    if (isVerified) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      fetch(`${apiUrl}/products/user/${userId}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Error fetching products');
+          return res.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setProducts(data);
+          }
+        })
+        .catch(() => toast.error('Error al cargar productos'));
+    }
+  }, [isVerified, userId]);
 
   const handleVerify = () => {
     if (otp === OTP_CODE) {
@@ -113,11 +113,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background p-8 space-y-8">
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-1">
-        <StockSummaryChart products={DUMMY_PRODUCTS} />
+        <StockSummaryChart products={products} />
       </div>
 
       {/* Products Table */}
-      <ProductsTable products={DUMMY_PRODUCTS} />
+      <ProductsTable products={products} />
     </div>
   );
 }

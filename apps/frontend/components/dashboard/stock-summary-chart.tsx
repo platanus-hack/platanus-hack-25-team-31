@@ -14,7 +14,8 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Product } from '@/dummy-types/product';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { Product } from '@backend/src/modules/products/entities/product.entity';
 
 interface StockSummaryChartProps {
   products: Product[];
@@ -28,32 +29,20 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Assume today is Wednesday (Index 2) for initial render context
-  // In a real app, we would get new Date().getDay() adjusted to Monday=0
   const TODAY_INDEX = 2; // Wednesday
 
   // Generate data for the selected week
   const chartData = useMemo(() => {
     const daysOfWeek = ['L', 'M', 'W', 'J', 'V', 'S', 'D'];
     return daysOfWeek.map((day, dayIndex) => {
-      // Calculate total days passed from "today" (start of simulation)
-      // If weekOffset = 0, days are 0..6
-      // If weekOffset = 1, days are 7..13
-      // But we need to align with "today is Wednesday".
-      // Let's assume the simulation starts "now" (Wednesday of current week).
-      // So Monday of current week was -2 days ago.
-      // Day index relative to Monday (0..6)
-      // Total days passed = (weekOffset * 7) + (dayIndex - TODAY_INDEX)
-
       const daysPassed = weekOffset * 7 + (dayIndex - TODAY_INDEX);
 
       let totalPercentage = 0;
       const count = products.length || 1;
 
       products.forEach((product) => {
-        const optimalStock = product.dailyConsumption * optimalDays;
-        // Projected stock = Current - (Daily * DaysPassed)
-        // Note: If daysPassed is negative (past days), stock was higher.
-        const projectedStock = product.estimatedStock - product.dailyConsumption * daysPassed;
+        const optimalStock = Number(product.dailyConsumption) * optimalDays;
+        const projectedStock = Number(product.estimatedStock) - Number(product.dailyConsumption) * daysPassed;
 
         const finalStock = Math.max(0, projectedStock);
         const percentage = optimalStock > 0 ? (finalStock / optimalStock) * 100 : 0;
@@ -72,27 +61,7 @@ export default function StockSummaryChart({ products }: StockSummaryChartProps) 
     });
   }, [products, weekOffset, optimalDays]);
 
-  // Split data into solid (past/today) and dashed (future)
-  // We need a continuous line, so we can't just split arrays easily without gaps.
-  // Recharts trick: render two lines, one solid, one dashed, connected?
-  // Easier approach: Stroke dasharray based on segment? Not directly supported per segment.
-  // We will use two overlapping lines or custom dot logic.
-  // Simpler for now: render the whole line as solid, but we want dashed for future.
-  // Let's split into two data series: 'actual' and 'projected'.
-  // 'actual' has values up to Today. 'projected' starts at Today.
-
   const processedData = chartData.map((d, i) => {
-    // Week 0: Monday(0), Tuesday(1) are past. Wednesday(2) is today. Thu-Sun future.
-    // Past weeks: All past.
-    // Future weeks: All future.
-
-    // Logic for simulation:
-    // If weekOffset < 0: All past (Solid)
-    // If weekOffset > 0: All projected (Dashed)
-    // If weekOffset === 0:
-    //    0..2 (Mon-Wed) -> Solid
-    //    2..6 (Wed-Sun) -> Dashed (overlap at Wed to connect lines)
-
     let solidVal = null;
     let dashedVal = null;
 

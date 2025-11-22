@@ -7,7 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Category, CategoryEmojis, Product, Unit } from '@/dummy-types/product';
+import { Category, CategoryEmojis } from '@/constants/category';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import type { Product } from '@backend/src/modules/products/entities/product.entity';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { MeasurementUnit } from '@backend/src/modules/products/entities/measurement-unit.enum';
 
 interface ProductsTableProps {
   products: Product[];
@@ -15,12 +19,14 @@ interface ProductsTableProps {
 
 const ITEMS_PER_PAGE = 5;
 
-const UNIT_ABBREVIATIONS: Record<Unit, string> = {
-  GRAMS: 'g',
-  UNITS: '',
-  LITERS: 'L',
-  KILOS: 'kg',
-  MILLILITERS: 'ml',
+const UNIT_ABBREVIATIONS: Record<MeasurementUnit, string> = {
+  [MeasurementUnit.GRAM]: 'g',
+  [MeasurementUnit.UNIT]: '',
+  [MeasurementUnit.LITER]: 'L',
+  [MeasurementUnit.KILOGRAM]: 'kg',
+  [MeasurementUnit.MILLILITER]: 'ml',
+  [MeasurementUnit.PACK]: 'pack',
+  [MeasurementUnit.OTHER]: '',
 };
 
 // Thresholds from environment variables
@@ -30,9 +36,9 @@ const OPTIMAL_STOCK_DAYS = Number(process.env.NEXT_PUBLIC_OPTIMAL_STOCK_DAYS || 
 
 // Helper to calculate stock health percentage
 function calculateStockHealth(product: Product): number {
-  const optimalStock = product.dailyConsumption * OPTIMAL_STOCK_DAYS;
+  const optimalStock = Number(product.dailyConsumption) * OPTIMAL_STOCK_DAYS;
   if (optimalStock === 0) return 100; // Edge case
-  return (product.estimatedStock / optimalStock) * 100;
+  return (Number(product.estimatedStock) / optimalStock) * 100;
 }
 
 export default function ProductsTable({ products }: ProductsTableProps) {
@@ -45,7 +51,12 @@ export default function ProductsTable({ products }: ProductsTableProps) {
     return products.filter((product) => {
       const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = categoryFilter === 'ALL' || product.category === categoryFilter;
-      const matchesCritical = !onlyCritical || product.criticalStock;
+
+      // Backend criticalStock is a number (threshold).
+      // Frontend logic: isCritical if estimatedStock <= criticalStock
+      // Ensure we parse numbers just in case they come as strings from JSON
+      const isCritical = Number(product.estimatedStock) <= Number(product.criticalStock);
+      const matchesCritical = !onlyCritical || isCritical;
 
       return matchesSearch && matchesCategory && matchesCritical;
     });
@@ -95,7 +106,7 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                       Todos
                     </span>
                   ) : (
-                    <span className="md:hidden">{CategoryEmojis[categoryFilter as Category]}</span>
+                    <span className="md:hidden">{CategoryEmojis[categoryFilter as Category] || categoryFilter}</span>
                   )}
                   <span className="hidden md:inline">{categoryFilter === 'ALL' ? 'Todas' : categoryFilter}</span>
                 </SelectValue>
@@ -135,8 +146,11 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                 const health = calculateStockHealth(product);
                 let rowClass = 'bg-green-50 hover:bg-green-100'; // Default Green
 
-                // Color logic using env thresholds
-                if (product.criticalStock || health < CRITICAL_THRESHOLD) {
+                // Backend critical logic
+                const isCritical = Number(product.estimatedStock) <= Number(product.criticalStock);
+
+                // Color logic using env thresholds AND critical flag from backend
+                if (isCritical || health < CRITICAL_THRESHOLD) {
                   rowClass = 'bg-red-50 hover:bg-red-100';
                 } else if (health >= CRITICAL_THRESHOLD && health <= WARNING_THRESHOLD) {
                   rowClass = 'bg-orange-50 hover:bg-orange-100';
@@ -146,11 +160,11 @@ export default function ProductsTable({ products }: ProductsTableProps) {
                   <TableRow key={product.id} className={rowClass}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>
-                      {product.estimatedStock} {UNIT_ABBREVIATIONS[product.unit]}
+                      {Number(product.estimatedStock)} {UNIT_ABBREVIATIONS[product.measurementUnit]}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span>{CategoryEmojis[product.category]}</span>
+                        <span>{CategoryEmojis[product.category as Category] || '📦'}</span>
                         <span className="text-xs text-muted-foreground md:text-sm">{product.category}</span>
                       </div>
                     </TableCell>
