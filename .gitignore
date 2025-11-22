@@ -79,3 +79,8 @@ Desktop.ini
 .cache/
 .parcel-cache/
 *.pem
+
+
+/apps/despense-agent/.venv/
+/apps/despense-agent/__pycache__/
+/apps/despense-agent/.env
