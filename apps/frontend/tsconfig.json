@@ -18,27 +18,14 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@shared-validation": [
-        "../../libs/shared-validation/src/index.ts"
-      ],
-      "@shared-validation/*": [
-        "../../libs/shared-validation/src/*"
-      ],
-      "@shared-utils": [
-        "../../libs/shared-utils/src/index.ts"
-      ],
-      "@shared-utils/*": [
-        "../../libs/shared-utils/src/*"
-      ]
+      "@/*": ["./*"],
+      "@shared-validation": ["../../libs/shared-validation/src/index.ts"],
+      "@shared-validation/*": ["../../libs/shared-validation/src/*"],
+      "@shared-utils": ["../../libs/shared-utils/src/index.ts"],
+      "@shared-utils/*": ["../../libs/shared-utils/src/*"],
+      "@backend/*": ["../../apps/backend/*"]
     },
-    "types": [
-      "node",
-      "react",
-      "react-dom"
-    ]
+    "types": ["node", "react", "react-dom"]
   },
   "include": [
     "**/*.ts",
@@ -47,13 +34,9 @@
     "**/*.jsx",
     "../../libs/shared-validation/src/index.ts",
     "../../libs/shared-utils/src/index.ts",
+    "../../apps/backend/src/**/*",
     "../../dist/apps/frontend/.next/types/**/*.ts",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "jest.config.ts",
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts"
-  ]
+  "exclude": ["node_modules", "jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"]
 }
