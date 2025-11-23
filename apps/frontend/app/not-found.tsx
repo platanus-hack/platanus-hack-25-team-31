@@ -1,4 +1,5 @@
 export default function NotFound() {
+  console.log('api url', process.env.NEXT_PUBLIC_API_URL);
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="flex flex-col items-center space-y-4 items-center justify-center">
