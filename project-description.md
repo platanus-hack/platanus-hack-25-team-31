@@ -1,5 +1,9 @@
 # Despens.ai 🥫✨
 
+**Current project logo:** project-logo.png
+
+<img src="./project-logo.png" alt="Project Logo" width="200" />
+
 **Track**: ✨ consumer AI
 
 despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener un control completo del inventario de sus despensas domésticas. Utilizando modelos de lenguaje (LLMs), inteligencia artificial y técnicas de predicción, el sistema genera estimaciones precisas del stock de cada producto.
