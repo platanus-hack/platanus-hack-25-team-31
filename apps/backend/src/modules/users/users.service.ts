@@ -65,11 +65,11 @@ export class UsersService {
       const data = await response.json();
       this.logger.log(`Agent response: ${JSON.stringify(data)}`);
 
-      return data.url || 'https://www.jumbo.cl/checkout/cart';
+      return data.url || 'https://www.jumbo.cl/mi-carro';
     } catch (error) {
       this.logger.error(`Error filling cart via agent: ${error.message}`);
       // Fallback a URL genérica en caso de error
-      return 'https://www.jumbo.cl/checkout/cart';
+      return 'https://www.jumbo.cl/mi-carro';
     }
   }
 

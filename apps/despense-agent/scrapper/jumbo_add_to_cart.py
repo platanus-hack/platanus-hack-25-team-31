@@ -203,7 +203,7 @@ async def add_to_cart(shopping_list: list):
         await context.storage_state(path=STATE_FILE)
         print(f"Session saved to {STATE_FILE}")
 
-        cart_url = "https://www.jumbo.cl/checkout/cart"
+        cart_url = "https://www.jumbo.cl/mi-carro"
         await browser.close()
 
         return cart_url
