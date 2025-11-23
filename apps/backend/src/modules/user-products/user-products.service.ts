@@ -297,6 +297,25 @@ export class UserProductsService {
       userProductMap.set(up.productId, up);
     });
 
+    // Calcular cantidad total por producto para movimientos IN y ADJUSTMENT (necesario para nuevos UserProducts)
+    const productTotalQuantities = new Map<string, number>();
+    if (dto.movementType === MovementType.IN || dto.movementType === MovementType.ADJUSTMENT) {
+      validItems.forEach((item) => {
+        const product = productMap.get(item.name.toLowerCase());
+        if (product) {
+          if (dto.movementType === MovementType.IN) {
+            // Para IN, sumar todas las cantidades del mismo producto
+            const currentTotal = productTotalQuantities.get(product.id) || 0;
+            productTotalQuantities.set(product.id, currentTotal + item.quantity);
+          } else if (dto.movementType === MovementType.ADJUSTMENT) {
+            // Para ADJUSTMENT, usar el último valor (como se hace en el Paso 9)
+            // Si hay múltiples adjustments del mismo producto, solo el último cuenta
+            productTotalQuantities.set(product.id, item.quantity);
+          }
+        }
+      });
+    }
+
     // Identificar UserProducts que necesitan ser creados
     const userProductsToCreate: UserProduct[] = [];
     for (const validatedItem of validItems) {
@@ -307,13 +326,28 @@ export class UserProductsService {
       }
 
       if (!userProductMap.has(product.id)) {
+        // Para productos nuevos con movimiento IN, calcular dailyConsumption y criticalStock
+        // El estimatedStock se calculará después en el Paso 9 cuando se procesen los movimientos
+        let dailyConsumption = 0;
+        let criticalStock = 0;
+
+        if (dto.movementType !== MovementType.OUT) {
+          const totalQuantity = productTotalQuantities.get(product.id) || 0;
+          if (totalQuantity > 0) {
+            // Asumir que la compra durará una semana (7 días)
+            dailyConsumption = parseFloat((totalQuantity / 7).toFixed(2));
+            // Critical stock es cuando solo quedan 2 días más
+            criticalStock = parseFloat((dailyConsumption * 2).toFixed(2));
+          }
+        }
+
         userProductsToCreate.push(
           this.userProductRepository.create({
             userId,
             productId: product.id,
-            estimatedStock: 0,
-            dailyConsumption: 0,
-            criticalStock: 0,
+            estimatedStock: 0, // Se calculará después en el Paso 9
+            dailyConsumption,
+            criticalStock,
           }),
         );
       }
