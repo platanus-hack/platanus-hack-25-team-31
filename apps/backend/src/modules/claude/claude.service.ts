@@ -255,4 +255,104 @@ Responde con un JSON Array de objetos con esta estructura:
 
     return processedItems;
   }
+
+  /**
+   * Genera una predicción de despensa basada en el perfil del hogar
+   */
+  async generatePantryPrediction(homeProfile: {
+    income: number;
+    foodType: string;
+    people: { age: number; gender: string; eatingRate: string; sportRate: string }[];
+  }): Promise<RawItemInput[]> {
+    const model = process.env.CLOUDE_MODEL_PRO || process.env.CLOUDE_MODEL || 'claude-3-opus-20240229';
+
+    const systemPrompt = `Eres un experto sociólogo y planificador de hogar chileno.
+Tu tarea es generar un inventario INICIAL COMPLETO y DETALLADO de despensa para un hogar en Chile, basado en sus características.
+Debes estimar qué productos y en qué cantidades tendrían almacenados.
+
+Reglas:
+1. Sé MUY EXTENSO y DETALLADO. Incluye abarrotes, lácteos, congelados, limpieza, aseo personal, etc.
+2. Usa nombres de productos comunes en Chile (ej: "Marraqueta", "Arroz", "Aceite de oliva", "Detergente", "Yogur de vainilla").
+3. Estima cantidades realistas para un stock inicial.
+4. Responde con productos genéricos, no especifiques marca, pero sí tipos y variedades.
+5. IMPORTANTE: Usa la herramienta 'submit_pantry_prediction' para enviar tu respuesta.`;
+
+    const userPrompt = `Genera una despensa completa para este hogar chileno:
+Ingreso mensual aproximado: $${homeProfile.income}
+Tipo de alimentación: ${homeProfile.foodType}
+Integrantes:
+${homeProfile.people
+  .map((p) => `- Edad: ${p.age}, Género: ${p.gender}, Nivel comida: ${p.eatingRate}, Deporte: ${p.sportRate}`)
+  .join('\n')}
+
+Genera al menos 50-80 productos esenciales y variados que deberían tener.`;
+
+    try {
+      const message = await this.anthropic.messages.create({
+        model,
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt,
+          },
+        ],
+        tools: [
+          {
+            name: 'submit_pantry_prediction',
+            description: 'Submit the predicted pantry inventory list containing multiple items.',
+            input_schema: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: {
+                        type: 'string',
+                        description: 'Nombre del producto (genérico, chileno)',
+                      },
+                      quantity: {
+                        type: 'number',
+                        description: 'Cantidad numérica',
+                      },
+                      measurementUnit: {
+                        type: 'string',
+                        enum: ['gr', 'kg', 'L', 'ml', 'unit', 'pack'],
+                        description: 'Unidad de medida',
+                      },
+                    },
+                    required: ['name', 'quantity', 'measurementUnit'],
+                  },
+                },
+              },
+              required: ['items'],
+            },
+          },
+        ],
+        tool_choice: { type: 'tool', name: 'submit_pantry_prediction' },
+      });
+
+      // Buscar el uso de la herramienta en la respuesta
+      const toolUse = message.content.find((block) => block.type === 'tool_use');
+
+      if (!toolUse || toolUse.type !== 'tool_use') {
+        throw new Error('Claude no usó la herramienta requerida para la respuesta estructurada');
+      }
+
+      const result = toolUse.input as { items: { name: string; quantity: number; measurementUnit: string }[] };
+
+      return result.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        measurementUnit: item.measurementUnit,
+        sourceText: `${item.quantity} ${item.measurementUnit} ${item.name}`,
+      }));
+    } catch (error) {
+      this.logger.error(`Error generando predicción de despensa: ${error.message}`);
+      return [];
+    }
+  }
 }

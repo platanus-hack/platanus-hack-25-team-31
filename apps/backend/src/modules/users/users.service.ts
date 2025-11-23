@@ -1,13 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { Home } from '../homes/entities/home.entity';
 import { Person } from '../people/entities/person.entity';
-import { CreateUserOnboardingDto } from './dto/create-onboarding.dto';
+import { CreateUserOnboardingDto, CreateHomeDto } from './dto/create-onboarding.dto';
+import { ClaudeService } from '../claude/claude.service';
+import { UserProductsService } from '../user-products/user-products.service';
+import { MovementType } from '../inventory-movements/entities/inventory-movement.entity';
+import { SourceType } from '../data-loads/entities/data-load.entity';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -17,6 +23,9 @@ export class UsersService {
     private readonly personRepository: Repository<Person>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly claudeService: ClaudeService,
+    @Inject(forwardRef(() => UserProductsService))
+    private readonly userProductsService: UserProductsService,
   ) {}
 
   async isUserAdmin(id: string): Promise<boolean> {
@@ -35,7 +44,7 @@ export class UsersService {
 
   async createOrUpdateUserOnboarding(dto: CreateUserOnboardingDto): Promise<User> {
     // Usar transacción para garantizar atomicidad
-    return await this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const userRepository = manager.getRepository(User);
       const homeRepository = manager.getRepository(Home);
       const personRepository = manager.getRepository(Person);
@@ -93,5 +102,53 @@ export class UsersService {
         relations: ['home', 'home.people'],
       });
     });
+
+    // Generar predicción de despensa automáticamente en background (fire and forget)
+    this.generateInitialPantry(result.id, dto.home).catch((error) => {
+      this.logger.error(`Background task error (generateInitialPantry): ${error.message}`, error.stack);
+    });
+
+    return result;
+  }
+
+  /**
+   * Proceso en background para generar la despensa inicial
+   */
+  private async generateInitialPantry(userId: string, homeDto: CreateHomeDto) {
+    try {
+      this.logger.log(`[Background] Iniciando generación de despensa para usuario ${userId}...`);
+      const predictedProducts = await this.claudeService.generatePantryPrediction({
+        income: homeDto.income,
+        foodType: homeDto.foodType,
+        people: homeDto.people.map((p) => ({
+          age: p.age,
+          gender: p.gender,
+          eatingRate: p.eatingRate,
+          sportRate: p.sportRate,
+        })),
+      });
+
+      if (predictedProducts.length > 0) {
+        this.logger.log(
+          `[Background] Predicción completada: ${predictedProducts.length} productos. Iniciando carga...`,
+        );
+        await this.userProductsService.bulkUpload(userId, {
+          movementType: MovementType.ADJUSTMENT,
+          sourceType: SourceType.MANUAL,
+          products: predictedProducts,
+        });
+        this.logger.log('[Background] Carga automática de despensa completada exitosamente');
+      } else {
+        this.logger.warn('[Background] La predicción no retornó productos');
+      }
+    } catch (error) {
+      this.logger.error(
+        `[Background] Error en generación automática de despensa: ${error.message}`,
+        error.stack,
+      );
+      // No lanzamos error para no afectar procesos globales si esto fuera parte de algo más grande,
+      // pero el catch del caller lo atraparía si hiciéramos throw.
+      throw error;
+    }
   }
 }
