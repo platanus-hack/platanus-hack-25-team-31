@@ -7,10 +7,12 @@ import { AgentTokenGuard } from '../auth/guards/agent-token.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<User> {
-    return this.usersService.findOne(id);
+  @Get(':id/is-admin')
+  async isUserAdmin(@Param('id') id: string): Promise<{ isAdmin: boolean }> {
+    const isAdmin = await this.usersService.isUserAdmin(id);
+    return { isAdmin };
   }
+
   @UseGuards(AgentTokenGuard)
   @Get('phone/:phoneNumber')
   async findByPhoneNumber(@Param('phoneNumber') phoneNumber: string): Promise<User | Record<string, never>> {

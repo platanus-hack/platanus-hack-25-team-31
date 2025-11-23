@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -10,10 +10,10 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async findOne(id: string): Promise<User> {
+  async isUserAdmin(id: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException(`User with ID ${id} not found`);
-    return user;
+    if (!user) return false;
+    return user.phoneNumber === '+56900000001';
   }
 
   async findByPhoneNumber(phoneNumber: string): Promise<User | Record<string, never>> {
