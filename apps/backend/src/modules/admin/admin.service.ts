@@ -20,6 +20,9 @@ export class AdminService {
     // 3. Check and notify critical stock
     await this.userProductsService.checkAndNotifyCriticalStock();
 
+    // 4. Recalculate daily consumption
+    await this.userProductsService.recalculateDailyConsumption();
+
     return {
       success: true,
       message: 'Day advanced successfully (History shifted)',

@@ -9,6 +9,7 @@ import { DataLoad } from '../data-loads/entities/data-load.entity';
 import { DataLoadItems } from '../data-load-items/entities/data-load-items.entity';
 import { InventoryMovement } from '../inventory-movements/entities/inventory-movement.entity';
 import { ClaudeModule } from '../claude/claude.module';
+import { ConsumptionPredictionService } from './services/consumption-prediction.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { ClaudeModule } from '../claude/claude.module';
     forwardRef(() => ClaudeModule),
   ],
   controllers: [UserProductsController],
-  providers: [UserProductsService],
+  providers: [UserProductsService, ConsumptionPredictionService],
   exports: [TypeOrmModule, UserProductsService],
 })
 export class UserProductsModule {}

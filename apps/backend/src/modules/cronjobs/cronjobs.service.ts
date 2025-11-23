@@ -40,5 +40,21 @@ export class CronjobsService {
       this.logger.error(`Error en chequeo de stock crítico: ${error.message}`, error.stack);
     }
   }
-}
 
+  /**
+   * Cronjob que se ejecuta todos los días a las 02:00
+   * Ajusta el consumo diario de los productos basándose en el historial de compras
+   */
+  @Cron('0 2 * * *')
+  async handleDailyConsumptionAdjustment() {
+    this.logger.log('Iniciando ajuste de consumo diario (cronjob diario a las 02:00)');
+    try {
+      const result = await this.userProductsService.recalculateDailyConsumption();
+      this.logger.log(
+        `Ajuste completado. Procesados: ${result.processed}, Actualizados: ${result.updated}, Tier1(Skip): ${result.tier1Skipped}, Tier2(Avg): ${result.tier2Calculated}, Tier3(ML): ${result.tier3Calculated}`,
+      );
+    } catch (error) {
+      this.logger.error(`Error en ajuste de consumo diario: ${error.message}`, error.stack);
+    }
+  }
+}
