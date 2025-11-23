@@ -195,7 +195,6 @@ async function seed() {
       estimatedStock: item.estimatedStock,
       dailyConsumption: item.dailyConsumption,
       criticalStock: item.criticalStock,
-      quantity: 0, // Will be updated by history
     });
     await userProductRepository.save(up);
 
@@ -203,7 +202,6 @@ async function seed() {
     const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 30);
 
     // Update UserProduct with final simulated stock
-    up.quantity = finalStock;
     up.estimatedStock = finalStock; // Update estimated too to match reality
     await userProductRepository.save(up);
 
@@ -273,12 +271,10 @@ async function seed() {
       estimatedStock: item.estimatedStock,
       dailyConsumption: item.dailyConsumption,
       criticalStock: item.criticalStock,
-      quantity: 0,
     });
     await userProductRepository.save(up);
 
     const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 30);
-    up.quantity = finalStock;
     up.estimatedStock = finalStock;
     await userProductRepository.save(up);
   }
@@ -296,12 +292,10 @@ async function seed() {
       estimatedStock: item.estimatedStock,
       dailyConsumption: item.dailyConsumption,
       criticalStock: item.criticalStock,
-      quantity: 0,
     });
     await userProductRepository.save(up);
 
     const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 30);
-    up.quantity = finalStock;
     up.estimatedStock = finalStock;
     await userProductRepository.save(up);
   }

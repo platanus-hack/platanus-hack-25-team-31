@@ -121,7 +121,11 @@ export class UserProductsService {
     const existingCategories = await this.categoryRepository.find();
     this.logger.log(`Categorías existentes: ${existingCategories.length}`);
 
-    // Paso 2: Crear DataLoad para este batch
+    // Paso 2: Obtener todos los productos existentes para búsqueda de similares
+    const existingProducts = await this.productRepository.find();
+    this.logger.log(`Productos existentes: ${existingProducts.length}`);
+
+    // Paso 3: Crear DataLoad para este batch
     const dataLoad = this.dataLoadRepository.create({
       userId,
       sourceType: dto.sourceType,
@@ -130,7 +134,7 @@ export class UserProductsService {
     const savedDataLoad = await this.dataLoadRepository.save(dataLoad);
     this.logger.log(`DataLoad creado: ${savedDataLoad.id}`);
 
-    // Paso 3: Procesar todos los productos en batch con Claude
+    // Paso 4: Procesar todos los productos en batch con Claude
     // Esto valida y normaliza nombre, unidad, cantidad e infiere categoría en una sola llamada por batch
     const rawItems: RawItemInput[] = dto.products.map((productInput) => ({
       name: productInput.name,
@@ -141,7 +145,7 @@ export class UserProductsService {
 
     let processedItems: Awaited<ReturnType<typeof this.claudeService.processItemsBatch>>;
     try {
-      processedItems = await this.claudeService.processItemsBatch(rawItems, existingCategories);
+      processedItems = await this.claudeService.processItemsBatch(rawItems, existingCategories, existingProducts);
       this.logger.log(`Procesamiento con Claude completado: ${processedItems.length} items`);
     } catch (error) {
       const errorMessage = `Error procesando items con Claude: ${error.message}`;
@@ -171,9 +175,9 @@ export class UserProductsService {
       };
     }
 
-    // Paso 4: Obtener todos los productos existentes en una sola query
+    // Paso 5: Obtener todos los productos existentes que coincidan con los nombres procesados
     const uniqueProductNames = [...new Set(validItems.map((item) => item.name))];
-    const existingProducts = await this.productRepository
+    const matchingProducts = await this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .where('LOWER(product.name) IN (:...names)', {
@@ -183,11 +187,11 @@ export class UserProductsService {
 
     // Crear mapa de productos por nombre (case-insensitive)
     const productMap = new Map<string, Product>();
-    existingProducts.forEach((product) => {
+    matchingProducts.forEach((product) => {
       productMap.set(product.name.toLowerCase(), product);
     });
 
-    // Paso 5: Procesar categorías (buscar existentes y crear nuevas en batch)
+    // Paso 6: Procesar categorías (buscar existentes y crear nuevas en batch)
     const categoryMap = new Map<string, Category>();
     existingCategories.forEach((cat) => {
       categoryMap.set(cat.name.toLowerCase(), cat);
@@ -195,7 +199,7 @@ export class UserProductsService {
 
     // Identificar categorías nuevas necesarias
     const categoriesToCreate = new Map<string, { name: string; emoji: string }>();
-    
+
     validItems.forEach((item) => {
       // Si el producto existe, usaremos su categoría existente
       if (productMap.has(item.name.toLowerCase())) return;
@@ -218,7 +222,7 @@ export class UserProductsService {
           emoji: info.emoji,
         }),
       );
-      
+
       const savedCategories = await this.categoryRepository.save(newCategories);
       savedCategories.forEach((cat) => {
         categoryMap.set(cat.name.toLowerCase(), cat);
@@ -226,7 +230,7 @@ export class UserProductsService {
       });
     }
 
-    // Paso 6: Crear productos nuevos en batch
+    // Paso 7: Crear productos nuevos en batch
     const productsToCreate: Product[] = [];
     const newProductNames = uniqueProductNames.filter((name) => !productMap.has(name.toLowerCase()));
 
@@ -240,7 +244,7 @@ export class UserProductsService {
         // Fallback a categoría "Otros" si no se encuentra (aunque debería existir ya)
         const fallbackCategory = categoryMap.get('otros') || Array.from(categoryMap.values())[0];
         if (fallbackCategory) {
-             productsToCreate.push(
+          productsToCreate.push(
             this.productRepository.create({
               name: productName,
               unit: processedItem.measurementUnit,
@@ -270,19 +274,22 @@ export class UserProductsService {
     }
 
     // Paso 8: Obtener todos los UserProducts existentes en una sola query
-    const productIds = validItems.map((item) => {
-      const product = productMap.get(item.name.toLowerCase());
-      return product?.id;
-    }).filter((id): id is string => !!id);
+    const productIds = validItems
+      .map((item) => {
+        const product = productMap.get(item.name.toLowerCase());
+        return product?.id;
+      })
+      .filter((id): id is string => !!id);
 
-    const existingUserProducts = productIds.length > 0
-      ? await this.userProductRepository.find({
-          where: {
-            userId,
-            productId: In(productIds),
-          },
-        })
-      : [];
+    const existingUserProducts =
+      productIds.length > 0
+        ? await this.userProductRepository.find({
+            where: {
+              userId,
+              productId: In(productIds),
+            },
+          })
+        : [];
 
     // Crear mapa de UserProducts por productId
     const userProductMap = new Map<string, UserProduct>();
@@ -307,7 +314,6 @@ export class UserProductsService {
             estimatedStock: 0,
             dailyConsumption: 0,
             criticalStock: 0,
-            quantity: 0,
           }),
         );
       }
@@ -332,10 +338,11 @@ export class UserProductsService {
       { currentQuantity: number; accumulatedChange: number; lastAdjustment: number | null }
     >();
 
-    // Inicializar cambios con las cantidades actuales
+    // Inicializar cambios con las cantidades actuales de TODOS los UserProducts
+    // (incluyendo los que se acaban de crear)
     userProductMap.forEach((userProduct) => {
       userProductQuantityChanges.set(userProduct.id, {
-        currentQuantity: Number(userProduct.quantity),
+        currentQuantity: Number(userProduct.estimatedStock),
         accumulatedChange: 0,
         lastAdjustment: null,
       });
@@ -382,7 +389,10 @@ export class UserProductsService {
             stockAfter = Math.max(0, quantityChange.currentQuantity + quantityChange.accumulatedChange);
             break;
           case MovementType.ADJUSTMENT:
+            // Para ADJUSTMENT, cada item establece el valor absoluto
+            // Si hay múltiples adjustments del mismo producto, solo el último cuenta
             quantityChange.lastAdjustment = validatedItem.quantity;
+            quantityChange.accumulatedChange = 0; // Reset accumulated change cuando hay adjustment
             stockAfter = validatedItem.quantity;
             break;
           default:
@@ -425,18 +435,58 @@ export class UserProductsService {
 
     // Paso 11: Batch update de UserProducts
     try {
+      // Verificar que todos los UserProducts que tienen items procesados estén en el mapa de cambios
+      const processedUserProductIds = new Set<string>();
+      validItems.forEach((item) => {
+        const product = productMap.get(item.name.toLowerCase());
+        if (product) {
+          const userProduct = userProductMap.get(product.id);
+          if (userProduct) {
+            processedUserProductIds.add(userProduct.id);
+          }
+        }
+      });
+
+      // Asegurar que todos los UserProducts procesados estén inicializados en el mapa de cambios
+      processedUserProductIds.forEach((userProductId) => {
+        if (!userProductQuantityChanges.has(userProductId)) {
+          const userProduct = Array.from(userProductMap.values()).find((up) => up.id === userProductId);
+          if (userProduct) {
+            userProductQuantityChanges.set(userProductId, {
+              currentQuantity: Number(userProduct.estimatedStock),
+              accumulatedChange: 0,
+              lastAdjustment: null,
+            });
+            this.logger.warn(
+              `UserProduct ${userProductId} no estaba en userProductQuantityChanges, inicializado ahora`,
+            );
+          }
+        }
+      });
+
       const userProductsToUpdateArray = Array.from(userProductQuantityChanges.entries())
         .map(([id, change]) => {
-          const userProduct = userProductMap.get(id);
-          if (!userProduct) return null;
+          // Buscar UserProduct por su id (no por productId)
+          const userProduct = Array.from(userProductMap.values()).find((up) => up.id === id);
+          if (!userProduct) {
+            this.logger.warn(`UserProduct con id ${id} no encontrado en userProductMap`);
+            return null;
+          }
 
           // Calcular cantidad final: si hay adjustment, usar ese valor; sino, usar acumulado
           const finalQuantity =
-            change.lastAdjustment !== null
-              ? change.lastAdjustment
-              : change.currentQuantity + change.accumulatedChange;
+            change.lastAdjustment !== null ? change.lastAdjustment : change.currentQuantity + change.accumulatedChange;
 
-          userProduct.quantity = Math.max(0, finalQuantity);
+          const previousStock = Number(userProduct.estimatedStock);
+          userProduct.estimatedStock = Math.max(0, finalQuantity);
+
+          // Log para debugging
+          if (previousStock !== Number(userProduct.estimatedStock)) {
+            this.logger.log(
+              `UserProduct ${id}: ${previousStock} -> ${userProduct.estimatedStock} (change: ${change.accumulatedChange}, adjustment: ${change.lastAdjustment})`,
+            );
+          }
+
           return userProduct;
         })
         .filter((up): up is UserProduct => up !== null);
@@ -444,6 +494,8 @@ export class UserProductsService {
       if (userProductsToUpdateArray.length > 0) {
         await this.userProductRepository.save(userProductsToUpdateArray);
         this.logger.log(`${userProductsToUpdateArray.length} UserProducts actualizados`);
+      } else {
+        this.logger.warn('No hay UserProducts para actualizar');
       }
     } catch (error) {
       const errorMessage = `Error actualizando UserProducts: ${error.message}`;
