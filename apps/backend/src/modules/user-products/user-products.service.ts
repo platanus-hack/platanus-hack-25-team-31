@@ -130,7 +130,8 @@ export class UserProductsService {
     const savedDataLoad = await this.dataLoadRepository.save(dataLoad);
     this.logger.log(`DataLoad creado: ${savedDataLoad.id}`);
 
-    // Paso 3: Validar todos los productos en paralelo con Claude
+    // Paso 3: Procesar todos los productos en batch con Claude
+    // Esto valida y normaliza nombre, unidad, cantidad e infiere categoría en una sola llamada por batch
     const rawItems: RawItemInput[] = dto.products.map((productInput) => ({
       name: productInput.name,
       quantity: productInput.quantity,
@@ -138,12 +139,12 @@ export class UserProductsService {
       sourceText: productInput.sourceText,
     }));
 
-    let validatedItems: Awaited<ReturnType<typeof this.claudeService.validateItems>>;
+    let processedItems: Awaited<ReturnType<typeof this.claudeService.processItemsBatch>>;
     try {
-      validatedItems = await this.claudeService.validateItems(rawItems);
-      this.logger.log(`Validación completada: ${validatedItems.length} items validados`);
+      processedItems = await this.claudeService.processItemsBatch(rawItems, existingCategories);
+      this.logger.log(`Procesamiento con Claude completado: ${processedItems.length} items`);
     } catch (error) {
-      const errorMessage = `Error validando items con Claude: ${error.message}`;
+      const errorMessage = `Error procesando items con Claude: ${error.message}`;
       this.logger.error(errorMessage, error.stack);
       errors.push(errorMessage);
       return {
@@ -154,8 +155,8 @@ export class UserProductsService {
       };
     }
 
-    // Filtrar items válidos (excluir los que tienen errores críticos)
-    const validItems = validatedItems.filter(
+    // Filtrar items válidos
+    const validItems = processedItems.filter(
       (item) => !(item.confidence === 'low' && item.conversionNote?.includes('Error')),
     );
     itemsProcessed = validItems.length;
@@ -174,6 +175,7 @@ export class UserProductsService {
     const uniqueProductNames = [...new Set(validItems.map((item) => item.name))];
     const existingProducts = await this.productRepository
       .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
       .where('LOWER(product.name) IN (:...names)', {
         names: uniqueProductNames.map((name) => name.toLowerCase()),
       })
@@ -185,75 +187,74 @@ export class UserProductsService {
       productMap.set(product.name.toLowerCase(), product);
     });
 
-    // Identificar productos nuevos
-    const newProductNames = uniqueProductNames.filter(
-      (name) => !productMap.has(name.toLowerCase()),
-    );
-
-    // Paso 5: Inferir categorías para productos nuevos en paralelo
-    const categoryPromises = newProductNames.map((productName) =>
-      this.claudeService.inferCategory(productName, existingCategories).catch((error) => {
-        this.logger.error(`Error infiriendo categoría para "${productName}": ${error.message}`);
-        return { name: 'Otros', emoji: '📦' }; // Fallback
-      }),
-    );
-
-    const categoryInfos = await Promise.all(categoryPromises);
-
-    // Paso 6: Procesar categorías (buscar existentes y crear nuevas en batch)
+    // Paso 5: Procesar categorías (buscar existentes y crear nuevas en batch)
     const categoryMap = new Map<string, Category>();
     existingCategories.forEach((cat) => {
       categoryMap.set(cat.name.toLowerCase(), cat);
     });
 
-    // Identificar categorías nuevas (deduplicadas)
-    const newCategoryInfos = categoryInfos.filter(
-      (info, index, self) =>
-        index === self.findIndex((i) => i.name.toLowerCase() === info.name.toLowerCase()),
-    );
+    // Identificar categorías nuevas necesarias
+    const categoriesToCreate = new Map<string, { name: string; emoji: string }>();
+    
+    validItems.forEach((item) => {
+      // Si el producto existe, usaremos su categoría existente
+      if (productMap.has(item.name.toLowerCase())) return;
 
-    const categoriesToCreate: Category[] = [];
-    for (const categoryInfo of newCategoryInfos) {
-      if (!categoryMap.has(categoryInfo.name.toLowerCase())) {
-        categoriesToCreate.push(
-          this.categoryRepository.create({
-            name: categoryInfo.name,
-            emoji: categoryInfo.emoji,
-          }),
-        );
-      }
-    }
+      // Si la categoría ya existe en BD, no necesitamos crearla
+      if (categoryMap.has(item.categoryName.toLowerCase())) return;
+
+      // Si no existe ni el producto ni la categoría, hay que crear la categoría
+      categoriesToCreate.set(item.categoryName.toLowerCase(), {
+        name: item.categoryName,
+        emoji: item.categoryEmoji,
+      });
+    });
 
     // Crear categorías nuevas en batch
-    if (categoriesToCreate.length > 0) {
-      const savedCategories = await this.categoryRepository.save(categoriesToCreate);
+    if (categoriesToCreate.size > 0) {
+      const newCategories = Array.from(categoriesToCreate.values()).map((info) =>
+        this.categoryRepository.create({
+          name: info.name,
+          emoji: info.emoji,
+        }),
+      );
+      
+      const savedCategories = await this.categoryRepository.save(newCategories);
       savedCategories.forEach((cat) => {
         categoryMap.set(cat.name.toLowerCase(), cat);
         this.logger.log(`Nueva categoría creada: ${cat.name} ${cat.emoji}`);
       });
     }
 
-    // Paso 7: Crear productos nuevos en batch
+    // Paso 6: Crear productos nuevos en batch
     const productsToCreate: Product[] = [];
-    const productNameToCategoryInfo = new Map<string, { name: string; emoji: string }>();
-    newProductNames.forEach((productName, index) => {
-      productNameToCategoryInfo.set(productName.toLowerCase(), categoryInfos[index]);
-    });
+    const newProductNames = uniqueProductNames.filter((name) => !productMap.has(name.toLowerCase()));
 
     for (const productName of newProductNames) {
-      const validatedItem = validItems.find((item) => item.name === productName);
-      if (!validatedItem) continue;
+      // Buscar el item procesado correspondiente para obtener datos
+      const processedItem = validItems.find((item) => item.name === productName);
+      if (!processedItem) continue;
 
-      const categoryInfo = productNameToCategoryInfo.get(productName.toLowerCase());
-      if (!categoryInfo) continue;
-
-      const category = categoryMap.get(categoryInfo.name.toLowerCase());
-      if (!category) continue;
+      const category = categoryMap.get(processedItem.categoryName.toLowerCase());
+      if (!category) {
+        // Fallback a categoría "Otros" si no se encuentra (aunque debería existir ya)
+        const fallbackCategory = categoryMap.get('otros') || Array.from(categoryMap.values())[0];
+        if (fallbackCategory) {
+             productsToCreate.push(
+            this.productRepository.create({
+              name: productName,
+              unit: processedItem.measurementUnit,
+              categoryId: fallbackCategory.id,
+            }),
+          );
+        }
+        continue;
+      }
 
       productsToCreate.push(
         this.productRepository.create({
           name: productName,
-          unit: validatedItem.measurementUnit,
+          unit: processedItem.measurementUnit,
           categoryId: category.id,
         }),
       );
