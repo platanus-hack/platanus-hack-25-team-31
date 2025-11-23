@@ -53,8 +53,8 @@ class MessageHandler:
         try:
             logger.info(f"Mensaje de texto recibido de {from_number}: {text}")
             
-            # Ejecutar el agente
-            response = run_agent(text, chat_history, None)
+            # Ejecutar el agente con el número de teléfono para consultar el backend
+            response = run_agent(text, chat_history, None, user_phone=from_number)
             
             # Manejar respuesta estructurada o simple
             respuesta_texto = self._extract_response_text(response)
@@ -118,9 +118,9 @@ class MessageHandler:
                 )
                 return
             
-            # Ejecutar el agente con el archivo de audio
+            # Ejecutar el agente con el archivo de audio y el número de teléfono
             logger.info(f"Ejecutando agente con archivo de audio: {audio_path}")
-            response = run_agent("", chat_history, audio_path)
+            response = run_agent("", chat_history, audio_path, user_phone=from_number)
             
             # Manejar respuesta estructurada o simple
             respuesta_texto = self._extract_response_text(response)
@@ -183,9 +183,9 @@ class MessageHandler:
                 )
                 return
             
-            # Ejecutar el agente con la imagen
+            # Ejecutar el agente con la imagen y el número de teléfono
             logger.info(f"Ejecutando agente con imagen: {image_path}")
-            response = run_agent("", chat_history, image_path)
+            response = run_agent("", chat_history, image_path, user_phone=from_number)
             
             # Manejar respuesta estructurada o simple
             respuesta_texto = self._extract_response_text(response)

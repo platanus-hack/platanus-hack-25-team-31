@@ -100,7 +100,11 @@ htmlcov/
 *.py[cod]
 *$py.class
 
+<<<<<<< HEAD
+*.ipynb
+=======
 # Python virtual environments (specific paths)
+>>>>>>> 5eb9dd100a7b6fb142e81808cab762ee9b5fd1cc
 /apps/despense-agent/.venv/
 /apps/despense-agent/__pycache__/
 /apps/despense-agent/.env
