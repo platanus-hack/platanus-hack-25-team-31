@@ -9,6 +9,7 @@ import { DataLoadItems } from '../data-load-items/entities/data-load-items.entit
 import { InventoryMovement, MovementType } from '../inventory-movements/entities/inventory-movement.entity';
 import { ClaudeService, RawItemInput } from '../claude/claude.service';
 import { BulkUploadDto } from './dto/bulk-upload.dto';
+import { ConsumptionPredictionService } from './services/consumption-prediction.service';
 
 interface BuyProductResponse {
   name: string;
@@ -46,6 +47,7 @@ export class UserProductsService {
     private readonly inventoryMovementRepository: Repository<InventoryMovement>,
     @Inject(forwardRef(() => ClaudeService))
     private readonly claudeService: ClaudeService,
+    private readonly predictionService: ConsumptionPredictionService,
   ) {}
 
   async getBuyProducts(userId: string): Promise<BuyProductResponse[]> {
@@ -616,6 +618,94 @@ export class UserProductsService {
     return {
       productsUpdated,
       movementsCreated,
+    };
+  }
+
+  /**
+   * Recalcula el consumo diario estimado usando un enfoque híbrido:
+   * 1. Tier 1 (< 20 días): Mantiene estimación inicial.
+   * 2. Tier 2 (20-70 días): Promedio Ajustado por Tiempo.
+   * 3. Tier 3 (> 70 días): Regresión Multivariada.
+   */
+  async recalculateDailyConsumption() {
+    const TIER2_THRESHOLD_DAYS = 20;
+    const TIER3_THRESHOLD_DAYS = 70;
+
+    // Obtenemos todos los userProducts con sus movimientos
+    const userProducts = await this.userProductRepository.find({
+      relations: ['inventoryMovements'],
+    });
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let tier2Count = 0;
+    let tier3Count = 0;
+
+    for (const up of userProducts) {
+      // Filtrar movimientos de entrada (IN) para calcular histórico
+      const purchaseMovements = up.inventoryMovements.filter((m) => m.movementType === MovementType.IN);
+
+      if (purchaseMovements.length === 0) {
+        skippedCount++;
+        continue;
+      }
+
+      // Encontrar la fecha más antigua de compra
+      const firstPurchaseDate = purchaseMovements.reduce((oldest, m) => {
+        const date = new Date(m.createdAt);
+        return date < oldest ? date : oldest;
+      }, new Date());
+
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - firstPurchaseDate.getTime());
+      const daysHistory = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let newDailyConsumption: number | null = null;
+
+      // TIER 1: Menos de 20 días de historia
+      if (daysHistory < TIER2_THRESHOLD_DAYS) {
+        // No hacemos nada, mantenemos la estimación inicial
+        // this.logger.debug(`Producto ${up.id} (Tier 1): ${daysHistory} días de historia. Skip.`);
+        skippedCount++;
+        continue;
+      }
+
+      // TIER 3: Más de 70 días de historia -> Intento de Regresión ML
+      if (daysHistory > TIER3_THRESHOLD_DAYS) {
+        newDailyConsumption = this.predictionService.predictDailyConsumption(up.inventoryMovements);
+        if (newDailyConsumption !== null) {
+          tier3Count++;
+        }
+      }
+
+      // TIER 2 (o Fallback de Tier 3): Promedio Ajustado por Tiempo
+      // Se ejecuta si estamos en rango 20-70 días O si la regresión falló (null)
+      if (newDailyConsumption === null) {
+        // Calcular total comprado en el periodo
+        const totalQuantity = purchaseMovements.reduce((sum, m) => sum + Number(m.quantity), 0);
+
+        const daysActive = Math.max(1, daysHistory);
+        newDailyConsumption = totalQuantity / daysActive;
+
+        if (daysHistory <= TIER3_THRESHOLD_DAYS) {
+          tier2Count++;
+        }
+      }
+
+      // Actualizar si hay cambios significativos
+      if (newDailyConsumption !== null && Math.abs(Number(up.dailyConsumption) - newDailyConsumption) > 0.01) {
+        up.dailyConsumption = parseFloat(newDailyConsumption.toFixed(2));
+        await this.userProductRepository.save(up);
+        updatedCount++;
+      }
+    }
+
+    return {
+      processed: userProducts.length,
+      updated: updatedCount,
+      tier1Skipped: skippedCount,
+      tier2Calculated: tier2Count,
+      tier3Calculated: tier3Count,
     };
   }
 
