@@ -26,5 +26,19 @@ export class CronjobsService {
       this.logger.error(`Error en reducción diaria de stock: ${error.message}`, error.stack);
     }
   }
+
+  /**
+   * Cronjob que se ejecuta todos los días a las 09:00
+   * Revisa stocks críticos y notifica a los usuarios
+   */
+  @Cron('0 9 * * *')
+  async handleCriticalStockCheck() {
+    this.logger.log('Iniciando chequeo diario de stock crítico (cronjob diario a las 09:00)');
+    try {
+      await this.userProductsService.checkAndNotifyCriticalStock();
+    } catch (error) {
+      this.logger.error(`Error en chequeo de stock crítico: ${error.message}`, error.stack);
+    }
+  }
 }
 

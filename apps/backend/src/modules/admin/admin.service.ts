@@ -17,6 +17,9 @@ export class AdminService {
     // 2. Reduce daily stock using the optimized service method
     const result = await this.userProductsService.reduceDailyStock();
 
+    // 3. Check and notify critical stock
+    await this.userProductsService.checkAndNotifyCriticalStock();
+
     return {
       success: true,
       message: 'Day advanced successfully (History shifted)',

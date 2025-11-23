@@ -618,4 +618,79 @@ export class UserProductsService {
       movementsCreated,
     };
   }
+
+  /**
+   * Revisa el stock crítico de todos los usuarios y envía notificaciones
+   */
+  async checkAndNotifyCriticalStock() {
+    this.logger.log('Iniciando revisión de stock crítico para notificaciones');
+
+    // 1. Obtener productos con stock crítico
+    const criticalProducts = await this.userProductRepository
+      .createQueryBuilder('up')
+      .leftJoinAndSelect('up.user', 'user')
+      .leftJoinAndSelect('up.product', 'product')
+      .where('up.estimatedStock <= up.criticalStock')
+      .andWhere('user.phoneNumber IS NOT NULL')
+      .getMany();
+
+    if (criticalProducts.length === 0) {
+      this.logger.log('No se encontraron productos con stock crítico');
+      return;
+    }
+
+    // 2. Agrupar por usuario
+    const productsByUser = new Map<string, UserProduct[]>();
+    criticalProducts.forEach((up) => {
+      if (!up.user.phoneNumber) return;
+      const existing = productsByUser.get(up.user.phoneNumber) || [];
+      existing.push(up);
+      productsByUser.set(up.user.phoneNumber, existing);
+    });
+
+    // 3. Enviar notificaciones
+    const agentUrl = process.env.DESPENSE_AGENT_URL;
+    const agentToken = process.env.AGENT_API_TOKEN;
+
+    if (!agentUrl || !agentToken) {
+      this.logger.error('Faltan variables de entorno DESPENSE_AGENT_URL o AGENT_API_TOKEN');
+      return;
+    }
+
+    let notificationsSent = 0;
+
+    for (const [phoneNumber, products] of productsByUser.entries()) {
+      const messageLines = ['⚠️ *Stock Crítico Detectado* ⚠️', ''];
+      products.forEach((p) => {
+        messageLines.push(`- ${p.product.name}: ${Number(p.estimatedStock).toFixed(2)} ${p.product.unit}`);
+      });
+      messageLines.push('', 'Te recomendamos reabastecer estos productos pronto.');
+
+      const message = messageLines.join('\n');
+
+      try {
+        const response = await fetch(`${agentUrl}/notify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${agentToken}`,
+          },
+          body: JSON.stringify({
+            phone_number: phoneNumber,
+            message: message,
+          }),
+        });
+
+        if (response.ok) {
+          notificationsSent++;
+        } else {
+          this.logger.error(`Error enviando notificación a ${phoneNumber}: ${response.statusText}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error enviando notificación a ${phoneNumber}: ${error.message}`);
+      }
+    }
+
+    this.logger.log(`Notificaciones de stock crítico enviadas: ${notificationsSent}`);
+  }
 }
