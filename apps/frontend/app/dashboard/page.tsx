@@ -1,55 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-export default function DashboardRedirectPage() {
+export default function DashboardEntryPage() {
   const router = useRouter();
+  const [userId, setUserId] = useState('');
 
-  useEffect(() => {
-    // Try to find a valid token in localStorage
-    // We iterate over keys because we don't know the userId a priori if we are just at /dashboard
-    // Pattern: despens_token_${userId}
-
-    // A simple heuristic: find the most recently used or first valid token.
-    let foundUserId = null;
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('despens_token_')) {
-        const tokenStr = localStorage.getItem(key);
-        if (tokenStr) {
-          try {
-            const token = JSON.parse(tokenStr);
-            const now = new Date().getTime();
-            if (now < token.expiresAt) {
-              foundUserId = key.replace('despens_token_', '');
-              break;
-            }
-          } catch (e) {
-            // ignore invalid JSON
-          }
-        }
-      }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userId.trim()) {
+      router.push(`/dashboard/${userId.trim()}`);
     }
-
-    if (foundUserId) {
-      router.replace(`/dashboard/${foundUserId}`);
-    } else {
-      // If no valid token found, maybe redirect home or show error
-      // For now, redirecting to home seems safest or a generic login
-      // But user asked to refresh to dashboard/userid.
-      // If we don't know userid, we can't.
-      // Assuming the user "lost" the context, we might redirect to a known demo user or 404.
-      router.replace('/');
-    }
-  }, [router]);
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex flex-col items-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Despens.ai</CardTitle>
+          <CardDescription>Ingresa tu ID de usuario para continuar.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="User ID (UUID)"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className="text-center"
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={!userId.trim()}>
+              Continuar
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

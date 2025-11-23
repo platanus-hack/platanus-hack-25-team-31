@@ -2,14 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import PinVerification from '@/components/auth/pin-verification';
 
-export default function AdminPanel() {
+interface AdminPageProps {
+  userId: string;
+}
+
+export default function AdminPage({ userId }: AdminPageProps) {
   const [loading, setLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
+  // Check Token
   useEffect(() => {
     // Mask URL to hide the exact path
-    window.history.replaceState(null, '', '/admin');
-  }, []);
+
+    const tokenStr = localStorage.getItem(`despens_token_${userId}`);
+    if (tokenStr) {
+      const token = JSON.parse(tokenStr);
+      const now = new Date().getTime();
+      if (now < token.expiresAt) {
+        setIsVerified(true);
+      } else {
+        localStorage.removeItem(`despens_token_${userId}`);
+      }
+    }
+  }, [userId]);
 
   const handleAdvanceDay = async () => {
     if (loading) return;
@@ -31,6 +48,10 @@ export default function AdminPanel() {
       setLoading(false);
     }
   };
+
+  if (!isVerified) {
+    return <PinVerification userId={userId} onVerify={() => setIsVerified(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8 flex flex-col items-center justify-center">
