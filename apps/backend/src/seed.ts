@@ -1,7 +1,7 @@
 import { AppDataSource } from './data-source';
 import { User } from './modules/users/entities/user.entity';
-import { Home, FoodType } from './modules/homes/entities/home.entity';
-import { Person, EatingRate, SportRate, Gender } from './modules/people/entities/person.entity';
+import { Home } from './modules/homes/entities/home.entity';
+import { Person } from './modules/people/entities/person.entity';
 import { Product, MeasurementUnit } from './modules/products/entities/product.entity';
 import { Category } from './modules/categories/entities/category.entity';
 import { UserProduct } from './modules/user-products/entities/user-product.entity';
@@ -225,59 +225,6 @@ async function seed() {
     otpExpiresAt: nextYear,
   });
   await userRepository.save(adminUser);
-
-  // USER 3: Agustín
-  const user3 = userRepository.create({
-    phoneNumber: '+56966463798',
-    name: 'Agustín',
-    otpCode: '0000',
-    otpExpiresAt: nextYear,
-  });
-  await userRepository.save(user3);
-
-  // Create Home for Agustín (he's the only one in his house)
-  const agustinHome = homeRepository.create({
-    userId: user3.id,
-    foodType: FoodType.BALANCED, // Come balanceado
-    income: 1500000, // Ingreso estimado
-  });
-  await homeRepository.save(agustinHome);
-
-  // Create Person for Agustín
-  const agustinPerson = personRepository.create({
-    homeId: agustinHome.id,
-    age: 24,
-    gender: Gender.MALE, // Hombre
-    eatingRate: EatingRate.LOW, // No considera que coma mucha comida
-    sportRate: SportRate.HIGH, // Hace mucho deporte
-  });
-  await personRepository.save(agustinPerson);
-
-  // User 3 Products (Agustín - productos saludables para deportista que come balanceado pero poco)
-  const user3ProductsData = [
-    { name: 'Pollo', estimatedStock: 1.5, dailyConsumption: 0.12, criticalStock: 0.4 }, // Proteína para deporte
-    { name: 'Huevos', estimatedStock: 12, dailyConsumption: 1.5, criticalStock: 6 }, // Proteína
-    { name: 'Quinoa', estimatedStock: 1, dailyConsumption: 0.08, criticalStock: 0.3 }, // Granos saludables
-    { name: 'Yogurt Griego', estimatedStock: 6, dailyConsumption: 0.5, criticalStock: 2 }, // Proteína láctea
-    { name: 'Avena', estimatedStock: 1, dailyConsumption: 0.1, criticalStock: 0.3 }, // Cereales para deportistas
-    { name: 'Aceite de Oliva', estimatedStock: 0.5, dailyConsumption: 0.03, criticalStock: 0.15 }, // Grasas saludables
-    { name: 'Lentejas', estimatedStock: 0.8, dailyConsumption: 0.06, criticalStock: 0.25 }, // Legumbres proteicas
-  ];
-
-  for (const item of user3ProductsData) {
-    const up = userProductRepository.create({
-      userId: user3.id,
-      productId: productMap.get(item.name)?.id,
-      estimatedStock: item.estimatedStock,
-      dailyConsumption: item.dailyConsumption,
-      criticalStock: item.criticalStock,
-    });
-    await userProductRepository.save(up);
-
-    const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 30);
-    up.estimatedStock = finalStock;
-    await userProductRepository.save(up);
-  }
 
   // User 2 Products
   const user2ProductsData = [
