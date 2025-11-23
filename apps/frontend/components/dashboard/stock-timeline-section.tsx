@@ -190,7 +190,7 @@ export function StockTimelineSection({ products, movements }: StockTimelineSecti
 
       <CardContent>
         <div className="relative h-72 w-full select-none">
-          <div className="absolute left-0 top-0 bottom-20 w-10 flex flex-col justify-between text-xs text-muted-foreground z-10 bg-background/50">
+          <div className="absolute left-0 top-0 bottom-20 w-10 flex flex-col justify-between text-xs text-muted-foreground z-10 bg-background/50 pr-2">
             {yTicks
               .slice()
               .reverse()

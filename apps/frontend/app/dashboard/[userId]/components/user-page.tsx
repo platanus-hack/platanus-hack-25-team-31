@@ -98,7 +98,7 @@ export default function UserPage({ userId }: UserPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8 space-y-8">
+    <div className="min-h-screen bg-background p-2 space-y-8">
       <div className="grid gap-4 md:grid-cols-1">
         <StockTimelineSection products={products} movements={movements} />
       </div>
