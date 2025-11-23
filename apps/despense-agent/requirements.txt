@@ -33,6 +33,11 @@ requests>=2.31.0          # Cliente HTTP para comunicarse con WhatsApp API
 gunicorn>=21.2.0          # Servidor WSGI de producción
 
 # ----------------------------------------------------------------------------
+# Scraping & Automation
+# ----------------------------------------------------------------------------
+playwright>=1.40.0        # Browser automation
+
+# ----------------------------------------------------------------------------
 # Utilidades
 # ----------------------------------------------------------------------------
 python-dotenv>=1.0.0      # Para cargar variables de entorno desde .env

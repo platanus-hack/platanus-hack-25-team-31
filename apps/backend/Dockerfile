@@ -1,43 +1,28 @@
 FROM node:18-slim
 
-# Install Python and pip
-# We use --break-system-packages because we are in a container and want to install globally
-RUN apt-get update && apt-get install -y python3 python3-pip && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Playwright and its dependencies
-RUN pip3 install playwright --break-system-packages
-RUN npx playwright install-deps chromium
-RUN python3 -m playwright install chromium
-
-# Standard Node setup
+# Setup de entorno
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Copiar archivos de dependencias
 COPY package.json pnpm-lock.yaml ./
+
+# Instalar dependencias
 RUN pnpm install --frozen-lockfile
 
+# Copiar el código fuente
 COPY . .
 
-# Build backend
+# Construir el backend
 RUN pnpm nx build backend --configuration=production
 
-# Runner stage
+# Etapa de producción
 FROM node:18-slim AS runner
 WORKDIR /app
 
-# Install Python and Playwright in runner too
-RUN apt-get update && apt-get install -y python3 python3-pip && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install playwright --break-system-packages
-RUN npx playwright install-deps chromium
-RUN python3 -m playwright install chromium
-
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Copiar archivos necesarios desde el builder
 COPY --from=0 /app/node_modules ./node_modules
 COPY --from=0 /app/package.json ./package.json
 COPY --from=0 /app/dist/apps/backend ./dist/apps/backend
@@ -50,11 +35,12 @@ COPY --from=0 /app/apps/backend/tsconfig.app.json ./apps/backend/tsconfig.app.js
 COPY --from=0 /app/apps/backend/tsconfig.json ./apps/backend/tsconfig.json
 COPY --from=0 /app/apps/backend/webpack.config.js ./apps/backend/webpack.config.js
 
-# Copy the python script and data
-COPY --from=0 /app/apps/despense-agent ./apps/despense-agent
-
+# Exponer puerto
 EXPOSE 3000
+
+# Variables de entorno por defecto
 ENV PORT=3000
 ENV NODE_ENV=production
 
+# Comando de inicio
 CMD ["sh", "-c", "pnpm db:migrate && ([ \"$RAILWAY_ENVIRONMENT\" = \"staging\" ] && pnpm db:seed || true) && node dist/apps/backend/main.js"]
