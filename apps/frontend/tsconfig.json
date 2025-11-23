@@ -34,7 +34,6 @@
     "**/*.jsx",
     "../../libs/shared-validation/src/index.ts",
     "../../libs/shared-utils/src/index.ts",
-    "../../apps/backend/src/**/*",
     "../../dist/apps/frontend/.next/types/**/*.ts",
     ".next/types/**/*.ts"
   ],
