@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { UsersModule } from './modules/users/users.module';
 import { HomesModule } from './modules/homes/homes.module';
@@ -12,8 +13,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { UserProductsModule } from './modules/user-products/user-products.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { CronjobsModule } from './modules/cronjobs/cronjobs.module';
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -35,6 +38,7 @@ import { AdminModule } from './modules/admin/admin.module';
     AuthModule,
     UserProductsModule,
     AdminModule,
+    CronjobsModule,
   ],
   controllers: [AppController],
   providers: [],

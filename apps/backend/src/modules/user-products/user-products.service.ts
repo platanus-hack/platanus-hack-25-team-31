@@ -548,4 +548,74 @@ export class UserProductsService {
       errors,
     };
   }
+
+  /**
+   * Reduce el stock diario de todos los productos usando una query SQL eficiente.
+   * Reduce estimated_stock en daily_consumption, asegurándose de que nunca sea menor a 0.
+   * Crea los movimientos de inventario correspondientes para cada producto que tuvo consumo.
+   */
+  async reduceDailyStock(): Promise<{
+    productsUpdated: number;
+    movementsCreated: number;
+  }> {
+    this.logger.log('Iniciando reducción diaria de stock para todos los productos');
+
+    // Primero obtener todos los productos que serán actualizados (antes del update)
+    const productsToUpdate = await this.userProductRepository
+      .createQueryBuilder('up')
+      .where('up.daily_consumption > 0')
+      .getMany();
+
+    // Preparar movimientos de inventario con los valores antes del update
+    const movementsToCreate: InventoryMovement[] = [];
+
+    for (const product of productsToUpdate) {
+      const dailyConsumption = Number(product.dailyConsumption);
+      const previousStock = Number(product.estimatedStock);
+      const newStock = Math.max(0, previousStock - dailyConsumption);
+
+      // Crear movimiento para todos los productos con consumo diario > 0
+      // El movimiento representa el consumo diario esperado, incluso si el stock llega a 0
+      movementsToCreate.push(
+        this.inventoryMovementRepository.create({
+          userProductId: product.id,
+          movementType: MovementType.OUT,
+          quantity: dailyConsumption,
+          stockAfter: newStock,
+          sourceLoadId: null, // No tiene sourceLoad porque es consumo automático diario
+        }),
+      );
+    }
+
+    // Query SQL para actualizar todos los productos de una vez
+    // Solo actualiza productos con daily_consumption > 0
+    const updateResult = await this.userProductRepository
+      .createQueryBuilder()
+      .update(UserProduct)
+      .set({
+        estimatedStock: () => `GREATEST(0, estimated_stock - daily_consumption)`, // GREATEST asegura que nunca sea menor a 0
+      })
+      .where('daily_consumption > 0')
+      .execute();
+
+    const productsUpdated = updateResult.affected || 0;
+    this.logger.log(`${productsUpdated} productos actualizados`);
+
+    // Crear movimientos en batch
+    let movementsCreated = 0;
+    if (movementsToCreate.length > 0) {
+      await this.inventoryMovementRepository.save(movementsToCreate);
+      movementsCreated = movementsToCreate.length;
+      this.logger.log(`${movementsCreated} movimientos de inventario creados`);
+    }
+
+    this.logger.log(
+      `Reducción diaria de stock completada: ${productsUpdated} productos actualizados, ${movementsCreated} movimientos creados`,
+    );
+
+    return {
+      productsUpdated,
+      movementsCreated,
+    };
+  }
 }
