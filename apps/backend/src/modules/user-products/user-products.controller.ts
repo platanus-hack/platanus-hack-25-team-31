@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Post, Body, UseGuards } from '@nestjs/common';
 import { UserProductsService } from './user-products.service';
 import { AgentTokenGuard } from '../auth/guards/agent-token.guard';
-import { BulkUploadDto } from './dto/bulk-upload.dto';
+import type { BulkUploadDto } from './dto/bulk-upload.dto';
 
 @Controller('user-products')
 export class UserProductsController {
