@@ -6,9 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Instalar dependencias del sistema
-# ffmpeg es necesario para pydub (procesamiento de audio)
+# ffmpeg es necesario para pydub
+# git y otros tools pueden ser necesarios
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Establecer el directorio de trabajo
@@ -18,13 +20,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Instalar Playwright y sus dependencias (Chromium)
+RUN playwright install --with-deps chromium
+
 # Copiar el código de la aplicación
 COPY . .
 
-# Exponer el puerto que usará la aplicación (Railway asigna uno dinámicamente, pero 5001 es nuestro default)
+# Exponer el puerto
 EXPOSE 5001
 
-# Comando para ejecutar la aplicación usando Gunicorn
-# Gunicorn es un servidor WSGI de producción, más robusto que el servidor de desarrollo de Flask
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "whatsapp_server:app"]
-
+# Comando para ejecutar la aplicación
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "whatsapp_server:app", "--timeout", "300"]

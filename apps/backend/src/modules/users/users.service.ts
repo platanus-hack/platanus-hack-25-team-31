@@ -2,8 +2,6 @@ import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { exec } from 'child_process';
-import { join } from 'path';
 import { Home } from '../homes/entities/home.entity';
 import { Person } from '../people/entities/person.entity';
 import { CreateUserOnboardingDto, CreateHomeDto } from './dto/create-onboarding.dto';
@@ -45,26 +43,34 @@ export class UsersService {
   }
 
   async fillCart(id: string, products: string[]): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const scriptPath = join(process.cwd(), 'apps', 'despense-agent', 'scrapper', 'jumbo_add_to_cart.py');
-      // Clean products JSON for command line
-      const productsJson = JSON.stringify(products).replace(/"/g, '\\"');
+    // URL del servicio de agente (configurable vía ENV)
+    const agentUrl = process.env.DESPENSE_AGENT_URL || 'http://despense-agent:5001';
 
-      const command = `python "${scriptPath}" "${productsJson}"`;
+    try {
+      this.logger.log(`Calling agent to fill cart for user ${id}...`);
 
-      console.log(`Executing cart script for user ${id}...`);
-
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error executing script: ${error}`);
-          // Don't reject, maybe partial success or just return cart link anyway
-        }
-        console.log(`Script output: ${stdout}`);
-        if (stderr) console.error(`Script errors: ${stderr}`);
-
-        resolve('https://www.jumbo.cl/checkout/cart');
+      const response = await fetch(`${agentUrl}/cart/fill`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(products),
       });
-    });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Agent returned status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      this.logger.log(`Agent response: ${JSON.stringify(data)}`);
+
+      return data.url || 'https://www.jumbo.cl/checkout/cart';
+    } catch (error) {
+      this.logger.error(`Error filling cart via agent: ${error.message}`);
+      // Fallback a URL genérica en caso de error
+      return 'https://www.jumbo.cl/checkout/cart';
+    }
   }
 
   async createOrUpdateUserOnboarding(dto: CreateUserOnboardingDto): Promise<User> {
@@ -167,10 +173,7 @@ export class UsersService {
         this.logger.warn('[Background] La predicción no retornó productos');
       }
     } catch (error) {
-      this.logger.error(
-        `[Background] Error en generación automática de despensa: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`[Background] Error en generación automática de despensa: ${error.message}`, error.stack);
       // No lanzamos error para no afectar procesos globales si esto fuera parte de algo más grande,
       // pero el catch del caller lo atraparía si hiciéramos throw.
       throw error;

@@ -3,37 +3,16 @@ import json
 import sys
 from playwright.async_api import async_playwright
 
+# Config
+STATE_FILE = 'jumbo_cart_state.json'
 
 # Credentials
 USER_EMAIL = "hormann.nicolas@gmail.com"
 USER_PASS = "Password1"
 
-# Default Shopping List
-SHOPPING_LIST = []
-
-# Override with args if provided
-if len(sys.argv) > 1:
-    try:
-        input_list = json.loads(sys.argv[1])
-        if isinstance(input_list, list):
-            normalized_list = []
-            for item in input_list:
-                if isinstance(item, str):
-                    normalized_list.append({"name": item})
-                elif isinstance(item, dict) and 'name' in item:
-                    normalized_list.append(item)
-            SHOPPING_LIST = normalized_list
-            print(f"Loaded {len(SHOPPING_LIST)} items from arguments.")
-    except Exception as e:
-        print(f"Error parsing arguments: {e}")
-
-if not SHOPPING_LIST:
-    print("Warning: No products provided in arguments.")
-
 
 async def process_product(context, item):
     name = item['name']
-    # Simplified logic: we don't use target quantity, just add 1 (or 1 more if existing)
 
     print(f"[{name}] Starting process...")
     page = await context.new_page()
@@ -141,9 +120,22 @@ async def process_product(context, item):
         await page.close()
 
 
-async def run():
+async def add_to_cart(shopping_list: list):
+    """
+    Main function to add items to cart.
+    Accepts a list of dicts: [{'name': 'product name'}, ...]
+    Returns the cart URL.
+    """
+    if not shopping_list:
+        return "No items provided"
+
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        # Headless=False for debugging, but in docker we might need True + xvfb or just True if it works.
+        # Ideally, we pass headless=True in production.
+        # But for now, let's keep False if we are running locally with GUI, or True for Docker.
+        # Since this runs in a container, we MUST set headless=True unless we have a display server.
+        # Setting headless=True for container compatibility.
+        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
         context = await browser.new_context()
         page = await context.new_page()
 
@@ -205,12 +197,35 @@ async def run():
 
         # --- PARALLEL ADD ---
         print("Starting parallel product addition...")
-        tasks = [process_product(context, item) for item in SHOPPING_LIST]
+        tasks = [process_product(context, item) for item in shopping_list]
         await asyncio.gather(*tasks)
 
-        print("https://www.jumbo.cl/checkout/cart")
+        await context.storage_state(path=STATE_FILE)
+        print(f"Session saved to {STATE_FILE}")
 
+        cart_url = "https://www.jumbo.cl/checkout/cart"
         await browser.close()
 
+        return cart_url
+
+# Compatibility with command line execution
 if __name__ == "__main__":
-    asyncio.run(run())
+    if len(sys.argv) > 1:
+        try:
+            input_list = json.loads(sys.argv[1])
+            if isinstance(input_list, list):
+                normalized_list = []
+                for item in input_list:
+                    if isinstance(item, str):
+                        normalized_list.append({"name": item})
+                    elif isinstance(item, dict) and 'name' in item:
+                        normalized_list.append(item)
+
+                url = asyncio.run(add_to_cart(normalized_list))
+                print(url)
+            else:
+                print("Error: Argument must be a list")
+        except Exception as e:
+            print(f"Error parsing arguments: {e}")
+    else:
+        print("Usage: python jumbo_add_to_cart.py '[{\"name\": \"...\"}]'")
