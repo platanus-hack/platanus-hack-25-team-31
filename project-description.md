@@ -15,32 +15,38 @@ Los usuarios interactúan con **Despensin**, un gestor de despensas amigable y m
 ### 1. Onboarding Personalizado
 
 Todo comienza en WhatsApp. Despensin inicia una conversación amigable para conocer tu hogar y configurar tu perfil inicial.
-![Onboarding](chat_inicial_onboarding.jpg)
+
+<img src="chat_inicial_onboarding.jpg" alt="Onboarding" width="300" />
 
 ### 2. Control Total de tu Inventario
 
 ¿Dudas en el pasillo del súper? Pregúntale a Despensin qué tienes en casa y recibe un reporte instantáneo de tu stock actual.
-![Inventario](que_hay_en_casa.jpg)
+
+<img src="que_hay_en_casa.jpg" alt="Inventario" width="300" />
 
 ### 3. Asistente de Compras Inteligente
 
 Basado en tus necesidades, Despensin genera automáticamente un carrito de compras en tu supermercado favorito, listo para pagar.
-![Carrito](carrito_lider.jpg)
+
+<img src="carrito_lider.jpg" alt="Carrito" width="300" />
 
 ### 4. Actualización sin Esfuerzo
 
 Olvídate de ingresar datos manualmente. Simplemente envía una foto de tu boleta y nuestra IA procesará cada ítem para actualizar tu despensa al instante.
-![Lectura de Boleta](subida_boleta_por_editar.jpg)
+
+<img src="subida_boleta_por_editar.jpg" alt="Lectura de Boleta" width="300" />
 
 ### 5. Tu Despensa Visualizada
 
 Accede a un dashboard web limpio y ordenado donde puedes ver el estado y resumen de tus productos.
-![Dashboard Vista General](vista_dashbord_1.png)
+
+<img src="vista_dashbord_1.png" alt="Dashboard Vista General" width="300" />
 
 ### 6. Proyecciones y Consumo
 
 Entiende tus hábitos con gráficos históricos que muestran tu consumo real y predicen cuándo necesitarás reabastecerte.
-![Dashboard Histórico](vista_dashbord_2.png)
+
+<img src="vista_dashbord_2.png" alt="Dashboard Histórico" width="300" />
 
 ---
 
