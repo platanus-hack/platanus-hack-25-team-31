@@ -72,6 +72,39 @@ def handle_webhook():
     return jsonify(response), status_code
 
 
+@app.route("/notify", methods=["POST"])
+def notify_user():
+    """
+    Endpoint para enviar notificaciones proactivas a usuarios.
+    Protegido por token interno.
+    """
+    # Verificar token de autorización
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    if token != settings.server.internal_api_token:
+        return jsonify({"error": "Invalid token"}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
+        
+    phone_number = data.get("phone_number")
+    message = data.get("message")
+    
+    if not phone_number or not message:
+        return jsonify({"error": "Missing phone_number or message"}), 400
+        
+    success = whatsapp_service.send_text_message(phone_number, message)
+    
+    if success:
+        return jsonify({"status": "success", "message": "Notification sent"}), 200
+    else:
+        return jsonify({"status": "error", "message": "Failed to send notification"}), 500
+
+
 @app.route("/debug", methods=["GET", "POST"])
 def debug_endpoint():
     """

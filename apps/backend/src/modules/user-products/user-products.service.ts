@@ -548,4 +548,149 @@ export class UserProductsService {
       errors,
     };
   }
+
+  /**
+   * Reduce el stock diario de todos los productos usando una query SQL eficiente.
+   * Reduce estimated_stock en daily_consumption, asegurándose de que nunca sea menor a 0.
+   * Crea los movimientos de inventario correspondientes para cada producto que tuvo consumo.
+   */
+  async reduceDailyStock(): Promise<{
+    productsUpdated: number;
+    movementsCreated: number;
+  }> {
+    this.logger.log('Iniciando reducción diaria de stock para todos los productos');
+
+    // Primero obtener todos los productos que serán actualizados (antes del update)
+    const productsToUpdate = await this.userProductRepository
+      .createQueryBuilder('up')
+      .where('up.daily_consumption > 0')
+      .getMany();
+
+    // Preparar movimientos de inventario con los valores antes del update
+    const movementsToCreate: InventoryMovement[] = [];
+
+    for (const product of productsToUpdate) {
+      const dailyConsumption = Number(product.dailyConsumption);
+      const previousStock = Number(product.estimatedStock);
+      const newStock = Math.max(0, previousStock - dailyConsumption);
+
+      // Crear movimiento para todos los productos con consumo diario > 0
+      // El movimiento representa el consumo diario esperado, incluso si el stock llega a 0
+      movementsToCreate.push(
+        this.inventoryMovementRepository.create({
+          userProductId: product.id,
+          movementType: MovementType.OUT,
+          quantity: dailyConsumption,
+          stockAfter: newStock,
+          sourceLoadId: null, // No tiene sourceLoad porque es consumo automático diario
+        }),
+      );
+    }
+
+    // Query SQL para actualizar todos los productos de una vez
+    // Solo actualiza productos con daily_consumption > 0
+    const updateResult = await this.userProductRepository
+      .createQueryBuilder()
+      .update(UserProduct)
+      .set({
+        estimatedStock: () => `GREATEST(0, estimated_stock - daily_consumption)`, // GREATEST asegura que nunca sea menor a 0
+      })
+      .where('daily_consumption > 0')
+      .execute();
+
+    const productsUpdated = updateResult.affected || 0;
+    this.logger.log(`${productsUpdated} productos actualizados`);
+
+    // Crear movimientos en batch
+    let movementsCreated = 0;
+    if (movementsToCreate.length > 0) {
+      await this.inventoryMovementRepository.save(movementsToCreate);
+      movementsCreated = movementsToCreate.length;
+      this.logger.log(`${movementsCreated} movimientos de inventario creados`);
+    }
+
+    this.logger.log(
+      `Reducción diaria de stock completada: ${productsUpdated} productos actualizados, ${movementsCreated} movimientos creados`,
+    );
+
+    return {
+      productsUpdated,
+      movementsCreated,
+    };
+  }
+
+  /**
+   * Revisa el stock crítico de todos los usuarios y envía notificaciones
+   */
+  async checkAndNotifyCriticalStock() {
+    this.logger.log('Iniciando revisión de stock crítico para notificaciones');
+
+    // 1. Obtener productos con stock crítico
+    const criticalProducts = await this.userProductRepository
+      .createQueryBuilder('up')
+      .leftJoinAndSelect('up.user', 'user')
+      .leftJoinAndSelect('up.product', 'product')
+      .where('up.estimatedStock <= up.criticalStock')
+      .andWhere('user.phoneNumber IS NOT NULL')
+      .getMany();
+
+    if (criticalProducts.length === 0) {
+      this.logger.log('No se encontraron productos con stock crítico');
+      return;
+    }
+
+    // 2. Agrupar por usuario
+    const productsByUser = new Map<string, UserProduct[]>();
+    criticalProducts.forEach((up) => {
+      if (!up.user.phoneNumber) return;
+      const existing = productsByUser.get(up.user.phoneNumber) || [];
+      existing.push(up);
+      productsByUser.set(up.user.phoneNumber, existing);
+    });
+
+    // 3. Enviar notificaciones
+    const agentUrl = process.env.DESPENSE_AGENT_URL;
+    const agentToken = process.env.AGENT_API_TOKEN;
+
+    if (!agentUrl || !agentToken) {
+      this.logger.error('Faltan variables de entorno DESPENSE_AGENT_URL o AGENT_API_TOKEN');
+      return;
+    }
+
+    let notificationsSent = 0;
+
+    for (const [phoneNumber, products] of productsByUser.entries()) {
+      const messageLines = ['⚠️ *Stock Crítico Detectado* ⚠️', ''];
+      products.forEach((p) => {
+        messageLines.push(`- ${p.product.name}: ${Number(p.estimatedStock).toFixed(2)} ${p.product.unit}`);
+      });
+      messageLines.push('', 'Te recomendamos reabastecer estos productos pronto.');
+
+      const message = messageLines.join('\n');
+
+      try {
+        const response = await fetch(`${agentUrl}/notify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${agentToken}`,
+          },
+          body: JSON.stringify({
+            phone_number: phoneNumber,
+            message: message,
+          }),
+        });
+
+        if (response.ok) {
+          notificationsSent++;
+        } else {
+          this.logger.error(`Error enviando notificación a ${phoneNumber}: ${response.statusText}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error enviando notificación a ${phoneNumber}: ${error.message}`);
+      }
+    }
+
+    this.logger.log(`Notificaciones de stock crítico enviadas: ${notificationsSent}`);
+  }
 }
