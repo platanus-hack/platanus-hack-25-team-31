@@ -271,7 +271,7 @@ Tu tarea es generar un inventario INICIAL COMPLETO y DETALLADO de despensa para 
 Debes estimar qué productos y en qué cantidades tendrían almacenados.
 
 Reglas:
-1. Sé MUY DETALLADO, genera al rededor de 40 productos. Incluye abarrotes, lácteos, congelados, limpieza, aseo personal, etc.
+1. Sé MUY DETALLADO, genera al rededor de 30 productos. Incluye abarrotes, lácteos, congelados, limpieza, aseo personal, etc.
 2. Usa nombres de productos comunes en Chile (ej: "Marraqueta", "Arroz", "Aceite de oliva", "Detergente", "Yogur de vainilla").
 3. Estima cantidades realistas para un stock inicial.
 4. Responde con productos genéricos, no especifiques marca, pero sí tipos y variedades.
