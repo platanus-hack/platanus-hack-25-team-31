@@ -450,7 +450,7 @@ def actualizar_despensa(
         response = bulk_upload_products(
             user_id=_current_user_id,
             movement_type=movement_type,
-            source_type="agent_chat", 
+            source_type="manual", 
             products=[product_payload]
         )
         
