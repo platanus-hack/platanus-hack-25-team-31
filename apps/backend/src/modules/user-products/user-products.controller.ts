@@ -1,6 +1,7 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, UseGuards } from '@nestjs/common';
 import { UserProductsService } from './user-products.service';
 import { AgentTokenGuard } from '../auth/guards/agent-token.guard';
+import { BulkUploadDto } from './dto/bulk-upload.dto';
 
 @Controller('user-products')
 export class UserProductsController {
@@ -16,5 +17,11 @@ export class UserProductsController {
   @Get('agent-all/:userId')
   async getAllProductsForAgent(@Param('userId') userId: string) {
     return this.userProductsService.getAllProductsForAgent(userId);
+  }
+
+  @UseGuards(AgentTokenGuard)
+  @Post('bulk-upload/:userId')
+  async bulkUpload(@Param('userId') userId: string, @Body() dto: BulkUploadDto) {
+    return this.userProductsService.bulkUpload(userId, dto);
   }
 }

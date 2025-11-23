@@ -94,6 +94,7 @@ despens.ai es un bot de WhatsApp inteligente que ayuda a las personas a mantener
 - `pnpm lint` - Ejecutar linter en todos los proyectos
 - `pnpm db:reset` - Resetear la base de datos (elimina esquema y ejecuta migraciones)
 - `pnpm db:migrate` - Ejecutar migraciones pendientes
+- `pnpm db:migration-generate --name=NombreMigracion` - Generar una nueva migración (se crea en `apps/backend/src/migrations/`)
 - `pnpm db:seed` - Poblar la base de datos con datos de ejemplo
 
 ### URLs de Desarrollo
