@@ -74,6 +74,7 @@ class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 5001
     debug: bool = False
+    internal_api_token: str = "dev-token"
     
     @classmethod
     def from_env(cls) -> "ServerConfig":
@@ -85,6 +86,7 @@ class ServerConfig:
             host=os.getenv("FLASK_HOST", "0.0.0.0"),
             port=port,
             debug=os.getenv("FLASK_DEBUG", "False").lower() == "true",
+            internal_api_token=os.getenv("AGENT_API_TOKEN", "dev-token"),
         )
 
 
