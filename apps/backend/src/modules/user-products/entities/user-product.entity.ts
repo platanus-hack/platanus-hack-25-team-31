@@ -22,9 +22,6 @@ export class UserProduct extends BaseEntity {
   @Column({ name: 'critical_stock', type: 'decimal', precision: 10, scale: 2 })
   criticalStock: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  quantity: number;
-
   // Relations
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })

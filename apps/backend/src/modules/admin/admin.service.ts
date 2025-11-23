@@ -30,11 +30,10 @@ export class AdminService {
       const variation = 0.9 + Math.random() * 0.2;
       const actualConsumption = Number((consumption * variation).toFixed(2));
 
-      let newStock = Number(product.quantity) - actualConsumption;
+      let newStock = Number(product.estimatedStock) - actualConsumption;
       if (newStock < 0) newStock = 0;
 
       // Update UserProduct state
-      product.quantity = newStock;
       product.estimatedStock = newStock;
       await this.userProductRepo.save(product);
 
