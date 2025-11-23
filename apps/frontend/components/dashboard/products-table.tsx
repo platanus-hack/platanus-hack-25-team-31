@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import type { UserProduct } from '@backend/src/modules/user-products/entities/user-product.entity';
 // eslint-disable-next-line @nx/enforce-module-boundaries
@@ -14,6 +15,8 @@ import { MeasurementUnit } from '@backend/src/modules/products/entities/measurem
 
 interface ProductsTableProps {
   products: UserProduct[];
+  selectedProductId?: string | null;
+  onSelectProduct?: (id: string) => void;
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -43,7 +46,7 @@ function calculateStockHealth(userProduct: UserProduct): number {
   return (estimatedStock / optimalStock) * 100;
 }
 
-export default function ProductsTable({ products }: ProductsTableProps) {
+export default function ProductsTable({ products, selectedProductId, onSelectProduct }: ProductsTableProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [onlyCritical, setOnlyCritical] = useState(false);
@@ -68,8 +71,6 @@ export default function ProductsTable({ products }: ProductsTableProps) {
       const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = categoryFilter === 'ALL' || product.category?.name === categoryFilter;
 
-      // Backend criticalStock is a number (threshold).
-      // Frontend logic: isCritical if estimatedStock <= criticalStock
       const isCritical = Number(userProduct.estimatedStock) <= Number(userProduct.criticalStock);
       const matchesCritical = !onlyCritical || isCritical;
 
@@ -80,7 +81,6 @@ export default function ProductsTable({ products }: ProductsTableProps) {
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  // Reset page when filters change
   useMemo(() => {
     setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,20 +158,33 @@ export default function ProductsTable({ products }: ProductsTableProps) {
               paginatedProducts.map((userProduct) => {
                 const product = userProduct.product;
                 const health = calculateStockHealth(userProduct);
-                let rowClass = 'bg-green-50 hover:bg-green-100'; // Default Green
+                let rowClass = 'bg-green-50 hover:bg-green-100';
 
-                // Backend critical logic
                 const isCritical = Number(userProduct.estimatedStock) <= Number(userProduct.criticalStock);
 
-                // Color logic using env thresholds AND critical flag from backend
                 if (isCritical || health < CRITICAL_THRESHOLD) {
                   rowClass = 'bg-red-50 hover:bg-red-100';
                 } else if (health >= CRITICAL_THRESHOLD && health <= WARNING_THRESHOLD) {
                   rowClass = 'bg-orange-50 hover:bg-orange-100';
                 }
 
+                const isSelected = selectedProductId === userProduct.id;
+
+                // Override styles if selected
+                if (isSelected) {
+                  rowClass = 'bg-blue-100 hover:bg-blue-200 !border-l-4 border-l-blue-500';
+                }
+
                 return (
-                  <TableRow key={userProduct.id} className={rowClass}>
+                  <TableRow
+                    key={userProduct.id}
+                    className={cn(rowClass, 'cursor-pointer transition-colors relative')}
+                    onClick={() => {
+                      if (onSelectProduct) {
+                        onSelectProduct(userProduct.id);
+                      }
+                    }}
+                  >
                     <TableCell className="font-medium">{product?.name}</TableCell>
                     <TableCell>
                       {Number(userProduct.estimatedStock)} {product?.unit ? UNIT_ABBREVIATIONS[product.unit] : ''}

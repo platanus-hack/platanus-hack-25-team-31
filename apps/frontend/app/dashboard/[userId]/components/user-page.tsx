@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ProductsTable from '@/components/dashboard/products-table';
 import PinVerification from '@/components/auth/pin-verification';
 // eslint-disable-next-line @nx/enforce-module-boundaries
@@ -16,6 +16,7 @@ export default function UserPage({ userId }: UserPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<UserProduct[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkToken = () => {
@@ -83,6 +84,13 @@ export default function UserPage({ userId }: UserPageProps) {
     }
   }, [isVerified, userId]);
 
+  const displayedProducts = useMemo(() => {
+    if (selectedProductId) {
+      return products.filter((p) => p.id === selectedProductId);
+    }
+    return products;
+  }, [products, selectedProductId]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -100,9 +108,21 @@ export default function UserPage({ userId }: UserPageProps) {
   return (
     <div className="min-h-screen bg-background p-2 space-y-8">
       <div className="grid gap-4 md:grid-cols-1">
-        <StockTimelineSection products={products} movements={movements} />
+        <StockTimelineSection
+          products={displayedProducts}
+          movements={movements}
+          title={
+            selectedProductId && displayedProducts.length > 0
+              ? `Histórico: ${displayedProducts[0].product.name}`
+              : undefined
+          }
+        />
       </div>
-      <ProductsTable products={products} />
+      <ProductsTable
+        products={products}
+        selectedProductId={selectedProductId}
+        onSelectProduct={(id) => setSelectedProductId((prev) => (prev === id ? null : id))}
+      />
     </div>
   );
 }

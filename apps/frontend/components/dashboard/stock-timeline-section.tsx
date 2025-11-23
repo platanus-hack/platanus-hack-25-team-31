@@ -27,6 +27,7 @@ export interface Movement {
 interface StockTimelineSectionProps {
   products: UserProduct[];
   movements: Movement[];
+  title?: string;
 }
 
 interface OptimizedMovement {
@@ -104,7 +105,7 @@ function generateWeekData(
   });
 }
 
-export function StockTimelineSection({ products, movements }: StockTimelineSectionProps) {
+export function StockTimelineSection({ products, movements, title }: StockTimelineSectionProps) {
   const [api, setApi] = useState<CarouselApi>();
 
   const optimalDays = Number(process.env.NEXT_PUBLIC_OPTIMAL_STOCK_DAYS || 10);
@@ -175,7 +176,7 @@ export function StockTimelineSection({ products, movements }: StockTimelineSecti
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle>Promedio historico de productos</CardTitle>
+          <CardTitle>{title || 'Promedio historico de productos'}</CardTitle>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
