@@ -1,55 +1,70 @@
-FROM node:18-alpine AS base
+FROM node:18-slim
 
-# Instalar pnpm
+# Install Python and pip
+RUN apt-get update && apt-get install -y python3 python3-pip && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Playwright dependencies
+# We need to install playwright globally or in the project, and its browsers
+# Installing system deps for playwright is heavy. 
+# Using a playwright-ready base image or installing deps is better.
+# Since we use 'exec' to call python script which uses playwright, the environment needs it.
+
+# Switch to a heavier base image that supports playwright or install deps
+# Using microsoft/playwright:v1.40.0-focal if possible, but we need Node 18.
+# Let's stick to node:18 and install python + playwright deps.
+# Actually, installing playwright browsers requires npx playwright install-deps
+
+RUN pip3 install playwright
+RUN npx playwright install-deps
+RUN python3 -m playwright install chromium
+
+# Standard Node setup
+WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Setup de entorno
-WORKDIR /app
-
-# Copiar archivos de dependencias
 COPY package.json pnpm-lock.yaml ./
-
-# Instalar dependencias
 RUN pnpm install --frozen-lockfile
 
-# Copiar el código fuente
 COPY . .
 
-# Construir el backend
+# Build backend
 RUN pnpm nx build backend --configuration=production
 
-# Etapa de producción
-FROM node:18-alpine AS runner
+# Runner stage
+FROM node:18-slim AS runner
 WORKDIR /app
 
-# Instalar pnpm
+# Install Python in runner too
+RUN apt-get update && apt-get install -y python3 python3-pip && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Playwright in runner
+RUN pip3 install playwright
+RUN npx playwright install-deps
+RUN python3 -m playwright install chromium
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copiar archivos necesarios desde el builder
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./package.json
-COPY --from=base /app/dist/apps/backend ./dist/apps/backend
-COPY --from=base /app/apps/backend/env.example ./apps/backend/env.example
+COPY --from=0 /app/node_modules ./node_modules
+COPY --from=0 /app/package.json ./package.json
+COPY --from=0 /app/dist/apps/backend ./dist/apps/backend
+COPY --from=0 /app/apps/backend/env.example ./apps/backend/env.example
+COPY --from=0 /app/nx.json ./nx.json
+COPY --from=0 /app/tsconfig.base.json ./tsconfig.base.json
+COPY --from=0 /app/apps/backend/src ./apps/backend/src
+COPY --from=0 /app/apps/backend/project.json ./apps/backend/project.json
+COPY --from=0 /app/apps/backend/tsconfig.app.json ./apps/backend/tsconfig.app.json
+COPY --from=0 /app/apps/backend/tsconfig.json ./apps/backend/tsconfig.json
+COPY --from=0 /app/apps/backend/webpack.config.js ./apps/backend/webpack.config.js
 
-# Copiar archivos de configuración de Nx necesarios para ejecutar comandos
-COPY --from=base /app/nx.json ./nx.json
-COPY --from=base /app/tsconfig.base.json ./tsconfig.base.json
+# Copy the python script and data
+COPY --from=0 /app/apps/despense-agent ./apps/despense-agent
 
-# Copiar código fuente del backend necesario para migraciones (TypeORM usa ts-node)
-COPY --from=base /app/apps/backend/src ./apps/backend/src
-COPY --from=base /app/apps/backend/project.json ./apps/backend/project.json
-COPY --from=base /app/apps/backend/tsconfig.app.json ./apps/backend/tsconfig.app.json
-COPY --from=base /app/apps/backend/tsconfig.json ./apps/backend/tsconfig.json
-COPY --from=base /app/apps/backend/webpack.config.js ./apps/backend/webpack.config.js
-
-# Exponer puerto
 EXPOSE 3000
-
-# Variables de entorno por defecto
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# Comando de inicio: Ejecutar migraciones y luego iniciar la app
-# Si es staging, también ejecutar seeds para reemplazar toda la información
 CMD ["sh", "-c", "pnpm db:migrate && ([ \"$RAILWAY_ENVIRONMENT\" = \"staging\" ] && pnpm db:seed || true) && node dist/apps/backend/main.js"]
-

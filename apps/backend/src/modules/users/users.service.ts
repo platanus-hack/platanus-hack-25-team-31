@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { ProductoForCart } from './dto/producto-for-cart.dto';
 import { exec } from 'child_process';
 import { join } from 'path';
 import { Home } from '../homes/entities/home.entity';
@@ -36,7 +35,7 @@ export class UsersService {
     return user || {};
   }
 
-  async fillCart(id: string, products: ProductoForCart[]): Promise<string> {
+  async fillCart(id: string, products: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
       const scriptPath = join(process.cwd(), 'apps', 'despense-agent', 'scrapper', 'jumbo_add_to_cart.py');
       // Clean products JSON for command line

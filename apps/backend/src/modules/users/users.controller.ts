@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { AgentTokenGuard } from '../auth/guards/agent-token.guard';
-import { ProductoForCart } from './dto/producto-for-cart.dto';
 import { CreateUserOnboardingDto } from './dto/create-onboarding.dto';
 
 @Controller('users')
@@ -22,7 +21,7 @@ export class UsersController {
   }
 
   @Get(':id/cart')
-  async getCart(@Param('id') id: string, @Body() products: ProductoForCart[]): Promise<string> {
+  async getCart(@Param('id') id: string, @Body() products: string[]): Promise<string> {
     console.log(`Filling cart for user ${id} with products: ${JSON.stringify(products)}`);
     return this.usersService.fillCart(id, products);
   }
