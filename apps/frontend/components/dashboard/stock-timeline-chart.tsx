@@ -58,7 +58,7 @@ export function StockTimelineChart({
   const warningY = criticalY - warningHeight;
 
   return (
-    <div className="h-full w-full select-none relative overflow-hidden">
+    <div className="h-full w-full select-none relative overflow-hidden rounded-sm">
       {/* Label inside chart */}
       <div className="absolute top-2 left-4 z-20 pointer-events-none">
         <span className="text-sm font-semibold text-muted-foreground bg-background/30 px-1 rounded">{label}</span>
