@@ -1,8 +1,8 @@
 export enum MeasurementUnit {
-  GRAM = 'gram',
-  KILOGRAM = 'kilogram',
-  LITER = 'liter',
-  MILLILITER = 'milliliter',
+  GRAM = 'gr',
+  KILOGRAM = 'kg',
+  LITER = 'L',
+  MILLILITER = 'ml',
   UNIT = 'unit',
   PACK = 'pack',
   OTHER = 'other',
