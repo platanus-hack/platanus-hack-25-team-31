@@ -1,4 +1,7 @@
-FROM node:18-slim
+FROM node:20-alpine AS base
+
+# Instalar pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Setup de entorno
 WORKDIR /app
@@ -17,7 +20,7 @@ COPY . .
 RUN pnpm nx build backend --configuration=production
 
 # Etapa de producción
-FROM node:18-slim AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
