@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { ProductoForCart } from './dto/producto-for-cart.dto';
+import { exec } from 'child_process';
+import { join } from 'path';
 import { Home } from '../homes/entities/home.entity';
 import { Person } from '../people/entities/person.entity';
 import { CreateUserOnboardingDto } from './dto/create-onboarding.dto';
@@ -31,6 +34,29 @@ export class UsersService {
     });
 
     return user || {};
+  }
+
+  async fillCart(id: string, products: ProductoForCart[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const scriptPath = join(process.cwd(), 'apps', 'despense-agent', 'scrapper', 'jumbo_add_to_cart.py');
+      // Clean products JSON for command line
+      const productsJson = JSON.stringify(products).replace(/"/g, '\\"');
+
+      const command = `python "${scriptPath}" "${productsJson}"`;
+
+      console.log(`Executing cart script for user ${id}...`);
+
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error executing script: ${error}`);
+          // Don't reject, maybe partial success or just return cart link anyway
+        }
+        console.log(`Script output: ${stdout}`);
+        if (stderr) console.error(`Script errors: ${stderr}`);
+
+        resolve('https://www.jumbo.cl/checkout/cart');
+      });
+    });
   }
 
   async createOrUpdateUserOnboarding(dto: CreateUserOnboardingDto): Promise<User> {
