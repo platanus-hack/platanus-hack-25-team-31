@@ -81,6 +81,7 @@ Desktop.ini
 *.pem
 
 
+*.ipynb
 /apps/despense-agent/.venv/
 /apps/despense-agent/__pycache__/
 /apps/despense-agent/.env
