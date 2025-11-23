@@ -158,30 +158,37 @@ async function seed() {
     dailyConsumption: number,
     days: number,
   ): Promise<number> {
-    // Assume we start `days` ago with some stock
+    // Start `days` ago with initial stock
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    let currentStock = estimatedStockTarget + dailyConsumption * days * 0.5; // Start higher so we consume down
+    // Start with a reasonable stock level (approximately 1 week supply)
+    const weeklySupply = dailyConsumption * 7;
+    let currentStock = weeklySupply * (0.8 + Math.random() * 0.4); // Start between 80-120% of weekly supply
 
     // Ensure initial movement to set stock
     await inventoryMovementRepository.save({
       userProductId,
       movementType: MovementType.IN,
-      quantity: currentStock,
+      quantity: Number(currentStock.toFixed(2)),
       stockAfter: Number(currentStock.toFixed(2)),
       createdAt: startDate, // Backdate
     });
 
     const consumptionHour = Number(process.env.CONSUMPTION_HOUR || 10);
+    const restockHour = consumptionHour + 4; // Restocks happen later in the day
+
+    // Track days since last major restock
+    let daysSinceMajorRestock = 0;
+    const majorRestockInterval = 7; // Major restock every ~7 days
 
     for (let i = 1; i <= days; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      date.setHours(consumptionHour, 0, 0, 0); // Configurable time
+      date.setHours(consumptionHour, 0, 0, 0);
 
-      // Consumption
-      const consume = Number((dailyConsumption * (0.8 + Math.random() * 0.4)).toFixed(2)); // +/- 20%
+      // Daily consumption (linear decrease)
+      const consume = Number((dailyConsumption * (0.9 + Math.random() * 0.2)).toFixed(2)); // +/- 10% variation
       if (currentStock >= consume) {
         currentStock -= consume;
         await inventoryMovementRepository.save({
@@ -189,24 +196,46 @@ async function seed() {
           movementType: MovementType.OUT,
           quantity: consume,
           stockAfter: Number(currentStock.toFixed(2)),
-          createdAt: new Date(date), // Distinct time
+          createdAt: new Date(date),
         });
       }
 
-      // Advance time
-      date.setHours(consumptionHour + 4, 0, 0, 0);
+      daysSinceMajorRestock++;
 
-      // Restock logic (if low)
-      if (currentStock < dailyConsumption * 2) {
-        const restock = Number((dailyConsumption * 7).toFixed(2)); // 1 week supply
-        currentStock += restock;
+      // Major restock every ~7 days
+      if (daysSinceMajorRestock >= majorRestockInterval) {
+        const restockDate = new Date(date);
+        restockDate.setHours(restockHour, 0, 0, 0);
+
+        // Major restock: enough for ~7 days
+        const majorRestock = Number((weeklySupply * (1.0 + Math.random() * 0.2)).toFixed(2)); // 100-120% of weekly supply
+        currentStock += majorRestock;
         await inventoryMovementRepository.save({
           userProductId,
           movementType: MovementType.IN,
-          quantity: restock,
+          quantity: majorRestock,
           stockAfter: Number(currentStock.toFixed(2)),
-          createdAt: new Date(date), // Later time
+          createdAt: restockDate,
         });
+
+        daysSinceMajorRestock = 0;
+      } else {
+        // Occasional minor restocks during the week (20% chance per day after day 3)
+        if (daysSinceMajorRestock > 3 && Math.random() < 0.2) {
+          const minorRestockDate = new Date(date);
+          minorRestockDate.setHours(restockHour, 0, 0, 0);
+
+          // Minor restock: 1-3 days supply
+          const minorRestock = Number((dailyConsumption * (1 + Math.random() * 2)).toFixed(2));
+          currentStock += minorRestock;
+          await inventoryMovementRepository.save({
+            userProductId,
+            movementType: MovementType.IN,
+            quantity: minorRestock,
+            stockAfter: Number(currentStock.toFixed(2)),
+            createdAt: minorRestockDate,
+          });
+        }
       }
     }
     return Number(currentStock.toFixed(2));
@@ -350,7 +379,7 @@ async function seed() {
     });
     await userProductRepository.save(up);
 
-    const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 60); // 60 days history
+    const finalStock = await generateHistory(up.id, item.estimatedStock, item.dailyConsumption, 30); // 60 days history
     up.estimatedStock = finalStock;
     await userProductRepository.save(up);
   }
