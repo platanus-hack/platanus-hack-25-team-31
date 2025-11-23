@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import MultivariateLinearRegression from 'ml-regression-multivariate-linear';
-import {
-  InventoryMovement,
-  MovementType,
-} from '../../inventory-movements/entities/inventory-movement.entity';
+import { InventoryMovement, MovementType } from '../../inventory-movements/entities/inventory-movement.entity';
 
 @Injectable()
 export class ConsumptionPredictionService {
@@ -26,8 +23,7 @@ export class ConsumptionPredictionService {
 
     // Ordenar movimientos por fecha ascendente
     const sortedMovements = [...movements].sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
     const X: number[][] = []; // Features: [TimeIndex, Month, IsHolidaySeason]
@@ -41,10 +37,7 @@ export class ConsumptionPredictionService {
       // Solo miramos movimientos de entrada (compras)
       if (current.movementType !== MovementType.IN) continue;
 
-      const daysDiff = this.getDaysDifference(
-        current.createdAt,
-        next.createdAt,
-      );
+      const daysDiff = this.getDaysDifference(current.createdAt, next.createdAt);
       if (daysDiff <= 0) continue;
 
       // Tasa de consumo en este intervalo = Cantidad Comprada / Días hasta la siguiente compra
@@ -76,12 +69,8 @@ export class ConsumptionPredictionService {
       const nextMonth = nextDate.getMonth();
       const nextIsHoliday = nextMonth === 11 || nextMonth === 0 ? 1 : 0;
 
-      const predictionVector = regression.predict([
-        nextIndex,
-        nextMonth,
-        nextIsHoliday,
-      ]);
-      
+      const predictionVector = regression.predict([nextIndex, nextMonth, nextIsHoliday]);
+
       // La librería devuelve un array de predicciones (porque y es multidimensional)
       const predictedConsumption = predictionVector[0];
 
@@ -94,13 +83,9 @@ export class ConsumptionPredictionService {
     }
   }
 
-  private getDaysDifference(
-    date1: Date | string,
-    date2: Date | string,
-  ): number {
+  private getDaysDifference(date1: Date | string, date2: Date | string): number {
     const d1 = new Date(date1).getTime();
     const d2 = new Date(date2).getTime();
     return (d2 - d1) / (1000 * 3600 * 24);
   }
 }
-
