@@ -135,6 +135,8 @@ def analizar_estado_stock(productos):
         critical = prod.get("criticalStock", 0)
         unidad_original = prod.get("unit", "").strip()
         unidad_cod = unidad_original.lower()
+        categoria = prod.get("category", "")
+
         
         # Selecciona el valor mapeado o usa la unidad original capitalizada si no está en el mapeo
         unidad = unidad_map.get(unidad_cod, unidad_original.capitalize() if unidad_original else "Unidad")
@@ -190,8 +192,10 @@ def analizar_estado_stock(productos):
         
         resultado.append({
             "name": nombre,
+            "category": categoria,
             "estado_stock": estado,
-            "cantidad": cantidad_formateada
+            "cantidad": cantidad_formateada,
+            "unidad": unidad # Incluimos la unidad limpia
         })
         
         # Print para debugging inmediato (solo el primer producto)
