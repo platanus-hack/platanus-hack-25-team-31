@@ -353,6 +353,7 @@ def consultar_despensa(item_name: str = "todos") -> str:
         productos_finales = []
         for p in productos_analizados:
             nombre = p.get("name", "")
+            categoria = p.get("category", "")
             cantidad_str = p.get("cantidad", "")
             estado_raw = p.get("estado_stock", "")
             estado_fmt = formatear_estado(estado_raw)
@@ -364,7 +365,8 @@ def consultar_despensa(item_name: str = "todos") -> str:
                 "nombre": nombre,
                 "cantidad": cantidad_str,
                 "estado": estado_fmt,
-                "mensaje_stock": f"{cantidad_str} ({estado_fmt})"
+                "mensaje_stock": f"{cantidad_str} ({estado_fmt})",
+                "categoria": categoria
             })
 
         if item_name.lower() == "todos":
@@ -517,6 +519,7 @@ def consultar_reposicion_de_productos() -> str:
         for prod in analizados:
             estado = prod.get("estado_stock", "").lower()
             nombre = prod.get("name", "")
+            unidad = prod.get("unidad", "unidad") # Unidad limpia
             
             # Filtrar: Solo incluir si es nivel bajo o medio (excluir alto)
             if "bajo" in estado or "medio" in estado:
@@ -534,6 +537,7 @@ def consultar_reposicion_de_productos() -> str:
                     "nombre": nombre,
                     "estado": estado_fmt,
                     "cantidad_sugerida": cantidad_sugerida,
+                    "unidad": unidad,
                     "stock_actual": prod.get("cantidad", ""),
                     "prioridad": prioridad
                 })
@@ -542,7 +546,7 @@ def consultar_reposicion_de_productos() -> str:
         if productos_a_comprar:
             mensaje = f"Se han identificado {len(productos_a_comprar)} productos que necesitan reposición (Estado BAJO o MEDIO):\n\n"
             for idx, p in enumerate(productos_a_comprar, 1):
-                mensaje += f"{idx}. *{p['nombre']}* (Estado: {p['estado']}) - Comprar: {p['cantidad_sugerida']}\n"
+                mensaje += f"{idx}. *{p['nombre']}* (Estado: {p['estado']}) - Comprar: {p['cantidad_sugerida']} {p['unidad']}\n"
         else:
             mensaje = "¡Excelente! Tienes todos los productos necesarios en buen nivel (ALTO). No necesitas comprar nada por ahora."
         
