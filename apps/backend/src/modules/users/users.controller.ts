@@ -20,9 +20,8 @@ export class UsersController {
     return this.usersService.findByPhoneNumber(phoneNumber);
   }
 
-  @Get(':id/cart')
+  @Post(':id/cart')
   async getCart(@Param('id') id: string, @Body() products: string[]): Promise<string> {
-    console.log(`Filling cart for user ${id} with products: ${JSON.stringify(products)}`);
     return this.usersService.fillCart(id, products);
   }
 
