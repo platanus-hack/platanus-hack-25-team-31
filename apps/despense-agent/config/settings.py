@@ -78,9 +78,12 @@ class ServerConfig:
     @classmethod
     def from_env(cls) -> "ServerConfig":
         """Crea configuración desde variables de entorno."""
+        # Railway usa la variable PORT por defecto
+        port = int(os.getenv("PORT", os.getenv("FLASK_PORT", "5001")))
+        
         return cls(
             host=os.getenv("FLASK_HOST", "0.0.0.0"),
-            port=int(os.getenv("FLASK_PORT", "5001")),
+            port=port,
             debug=os.getenv("FLASK_DEBUG", "False").lower() == "true",
         )
 

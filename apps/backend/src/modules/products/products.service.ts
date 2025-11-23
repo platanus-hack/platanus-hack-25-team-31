@@ -24,4 +24,14 @@ export class ProductsService {
       },
     });
   }
+
+  /**
+   * Busca un producto por nombre (case-insensitive)
+   */
+  async findByName(name: string): Promise<Product | null> {
+    return this.productRepository
+      .createQueryBuilder('product')
+      .where('LOWER(product.name) = LOWER(:name)', { name })
+      .getOne();
+  }
 }

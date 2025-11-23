@@ -20,11 +20,13 @@ Un agente conversacional inteligente construido con **LangGraph** que gestiona e
 ## 🚀 Instalación
 
 1. **Clonar o navegar al proyecto**:
+
 ```bash
 cd Platanus
 ```
 
 2. **Crear y activar un entorno virtual**:
+
 ```bash
 # Si tienes Python 3.13, usa Python 3.12 o 3.11:
 python3.12 -m venv .venv  # O python3.11
@@ -35,18 +37,21 @@ source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 ```
 
 3. **Actualizar pip**:
+
 ```bash
 pip install --upgrade pip setuptools wheel
 ```
 
 4. **Instalar dependencias**:
+
 ```bash
-pip install -r requirements.txt
+pip install -r apps/despense-agent/requirements.txt
 ```
 
 > ⚠️ **Problemas con la instalación?** Consulta [SETUP.md](SETUP.md) para soluciones detalladas, especialmente si usas Python 3.13.
 
 4. **Configurar variables de entorno**:
+
 ```bash
 cp .env.example .env
 # Editar .env y agregar tu OPENAI_API_KEY
@@ -57,17 +62,19 @@ cp .env.example .env
 ### Ejecutar el agente interactivo:
 
 ```bash
-python despensa_agent.py
+python apps/despense-agent/despensa_agent.py
 ```
 
 ### Ejemplos de uso:
 
 **Consultas:**
+
 - "¿Qué me falta?"
 - "¿Tengo leche?"
 - "¿Cuál es el estado del pan?"
 
 **Actualizaciones:**
+
 - "Compré huevos"
 - "Se me acabó el pan"
 - "Agregué azúcar"
@@ -92,6 +99,7 @@ Usuario → Agente (Razonamiento) → Router → Herramienta → Respuesta Final
 ## 📊 Base de Datos Simulada
 
 Por ahora, la despensa usa un diccionario global en Python (`DESPENSA_DB`). Los estados posibles son:
+
 - `BAJO`: El ítem está escaso
 - `MEDIO`: El ítem tiene cantidad moderada
 - `ALTO`: El ítem está bien abastecido
@@ -115,10 +123,11 @@ El código está diseñado para ser fácilmente expandible:
 ## 🐛 Troubleshooting
 
 **Error: OPENAI_API_KEY no encontrada**
+
 - Asegúrate de haber creado el archivo `.env` con tu API key
 - Verifica que el archivo esté en la raíz del proyecto
 
 **Error al instalar dependencias**
+
 - Asegúrate de tener Python 3.9 o superior
 - Verifica que el entorno virtual esté activado
-

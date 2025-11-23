@@ -30,6 +30,7 @@ openai>=2.0.0             # SDK oficial de OpenAI
 # ----------------------------------------------------------------------------
 flask>=3.0.0              # Framework web para recibir webhooks de WhatsApp
 requests>=2.31.0          # Cliente HTTP para comunicarse con WhatsApp API
+gunicorn>=21.2.0          # Servidor WSGI de producción
 
 # ----------------------------------------------------------------------------
 # Utilidades
@@ -49,4 +50,3 @@ pydub>=0.25.1            # Para conversión de formatos de audio (OGG a WAV)
 # langgraph-prebuilt      # Componentes pre-construidos (ToolNode, etc.)
 # langgraph-sdk           # SDK para LangGraph
 # typing-inspection       # Utilidades de inspección de tipos
-

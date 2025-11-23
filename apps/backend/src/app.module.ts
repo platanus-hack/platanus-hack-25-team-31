@@ -10,7 +10,8 @@ import { DataLoadItemsModule } from './modules/data-load-items/data-load-items.m
 import { InventoryMovementsModule } from './modules/inventory-movements/inventory-movements.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
-
+import { UserProductsModule } from './modules/user-products/user-products.module';
+import { AdminModule } from './modules/admin/admin.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -32,6 +33,8 @@ import { CategoriesModule } from './modules/categories/categories.module';
     DataLoadItemsModule,
     InventoryMovementsModule,
     AuthModule,
+    UserProductsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [],

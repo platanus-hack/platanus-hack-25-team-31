@@ -80,8 +80,31 @@ Desktop.ini
 .parcel-cache/
 *.pem
 
+# Python
+.venv/
+venv/
+ENV/
+env/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+*.py[cod]
+*$py.class
 
+<<<<<<< HEAD
 *.ipynb
+=======
+# Python virtual environments (specific paths)
+>>>>>>> 5eb9dd100a7b6fb142e81808cab762ee9b5fd1cc
 /apps/despense-agent/.venv/
 /apps/despense-agent/__pycache__/
 /apps/despense-agent/.env

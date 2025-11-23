@@ -114,32 +114,27 @@ export default function ProductsTable({ products }: ProductsTableProps) {
 
           <div className="flex items-center">
             <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value)}>
-              <SelectTrigger className="w-[70px] sm:w-[180px] h-9 px-2 text-lg sm:text-sm flex items-center justify-center">
+              <SelectTrigger className="w-[90px] sm:w-[180px] h-9 px-2 text-sm flex items-center justify-center">
                 <SelectValue placeholder="Categoría">
                   {categoryFilter === 'ALL' ? (
-                    <span className="md:hidden text-sm font-medium text-muted-foreground flex items-center h-full">
-                      Todos
-                    </span>
+                    <span className="text-sm font-medium text-muted-foreground flex items-center h-full">Todos</span>
                   ) : (
-                    // Show Emoji on mobile if selected
-                    <span className="md:hidden">
-                      {uniqueCategories.find((c) => c.name === categoryFilter)?.emoji || categoryFilter}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span>{uniqueCategories.find((c) => c.name === categoryFilter)?.emoji}</span>
+                      <span className="text-sm">{categoryFilter}</span>
+                    </div>
                   )}
-                  <span className="hidden md:inline">{categoryFilter === 'ALL' ? 'Todas' : categoryFilter}</span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">
-                  <span className="sm:hidden text-sm">Todos</span>
-                  <span className="hidden sm:inline">Todos</span>
+                  <span className="text-sm">Todos</span>
                 </SelectItem>
                 {uniqueCategories.map((cat) => (
                   <SelectItem key={cat.name} value={cat.name}>
                     <div className="flex items-center gap-2">
                       <span>{cat.emoji}</span>
-                      <span className="hidden sm:inline">{cat.name}</span>
-                      <span className="sm:hidden text-xs">{cat.name.substring(0, 3)}..</span>
+                      <span className="text-sm">{cat.name}</span>
                     </div>
                   </SelectItem>
                 ))}

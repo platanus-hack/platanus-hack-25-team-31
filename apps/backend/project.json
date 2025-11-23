@@ -81,8 +81,10 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/backend",
-        "command": "npx typeorm-ts-node-commonjs migration:generate -d src/data-source.ts src/migrations/{args.name}"
-      }
+        "command": "mkdir -p src/migrations && npx typeorm-ts-node-commonjs migration:generate -d src/data-source.ts src/migrations/{args.name}"
+      },
+      "inputs": ["{projectRoot}/src/**/*.entity.ts"],
+      "outputs": ["{projectRoot}/src/migrations"]
     }
   }
 }
